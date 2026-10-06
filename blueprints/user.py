@@ -63,11 +63,11 @@ def dashboard():
 def new_order():
     db = get_session()
     try:
+        from models import Platform, Category, Notification
         sid = request.args.get("service") or request.form.get("service_id")
         svc = db.query(Service).filter_by(id=sid, status="active").first() if sid else None
         schema = form_svc.get_form_schema(svc) if svc else []
         if request.method == "POST" and svc:
-            # CSRF
             if request.form.get("csrf") != __import__("flask").session.get("csrf"):
                 abort(400)
             link = request.form.get("link", "").strip()
@@ -75,7 +75,6 @@ def new_order():
                 qty = int(request.form.get("quantity", 0))
             except ValueError:
                 qty = 0
-            # schema-driven extra fields only (x_<param>)
             input_data = form_svc.extract_input_data(request.form, svc)
             cur = g.user.currency or "USD"
             rate = _rate(cur)
@@ -84,11 +83,30 @@ def new_order():
             if res["ok"]:
                 return redirect(url_for("user.order_detail", oid=res["order_id"]))
             return render_template("dashboard/order.html", svc=svc, schema=schema,
-                                   error=res["error"], link=link, qty=qty)
-        services = db.query(Service).filter_by(status="active").order_by(
-            Service.sort_order).limit(300).all()
+                                   error=res["error"], link=link, qty=qty,
+                                   balance=wallet_svc.get_balance_usd(db, g.user.id))
+        # service picker (GET)
+        platform = request.args.get("platform", "")
+        category = request.args.get("category", "")
+        query = db.query(Service).filter_by(status="active")
+        if platform:
+            p = db.query(Platform).filter_by(code=platform).first()
+            if p:
+                query = query.filter_by(platform_id=p.id)
+        if category and category.isdigit():
+            query = query.filter_by(category_id=int(category))
+        services = query.order_by(Service.sort_order).limit(300).all()
+        platforms = db.query(Platform).order_by(Platform.sort_order).all()
+        categories = db.query(Category).filter_by(is_hidden=False).order_by(
+            Category.sort_order).all()
+        unread = db.query(Notification).filter_by(user_id=g.user.id,
+                                                  is_read=False).count()
         return render_template("dashboard/order.html", svc=svc, schema=schema,
-                               services=services)
+                               services=services, platforms=platforms,
+                               categories=categories, platform=platform,
+                               category=category,
+                               balance=wallet_svc.get_balance_usd(db, g.user.id),
+                               unread=unread)
     finally:
         db.close()
 

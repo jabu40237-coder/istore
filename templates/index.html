@@ -1,39 +1,49 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero">
-  <canvas id="hero3d"></canvas>
-  <div class="hero-inner">
-    <span class="hero-badge">{{ t('app_name') }} · {{ t('app_name_latin') }}</span>
-    <h1>{{ t('tagline') }}</h1>
-    <p class="sub">{{ t('subheading') }}</p>
-    <div class="hero-cta">
-      <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
-      <a class="btn btn-ghost" href="{{ url_for('services') }}">{{ t('explore_services') }}</a>
-    </div>
+  <span class="hero-badge">{{ t('app_name') }} · {{ t('app_name_latin') }}</span>
+  <h1>{{ t('tagline') }}</h1>
+  <p class="sub">{{ t('subheading') }}</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
+    <a class="btn btn-outline" href="{{ url_for('services') }}">{{ t('explore_services') }}</a>
+  </div>
+  <div class="hero-3d">
+    <img src="/3d-assets/hero-store.png" alt="i Store" class="art" onerror="this.outerHTML='<div class=\'art\'>🏪</div>'">
   </div>
 </section>
 
 <section class="section">
-  <div class="grid grid-4">
-    <div class="card stat-card"><div class="num">{{ stats.services }}</div><div class="lbl2">{{ t('stats_services') }}</div></div>
-    <div class="card stat-card"><div class="num">{{ stats.orders }}</div><div class="lbl2">{{ t('stats_orders') }}</div></div>
-    <div class="card stat-card"><div class="num">{{ stats.users }}</div><div class="lbl2">{{ t('stats_users') }}</div></div>
-    <div class="card stat-card"><div class="num">99.9%</div><div class="lbl2">{{ t('stats_uptime') }}</div></div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="num orange">{{ "{:,}".format(stats.services) }}</div><div class="lbl2">{{ t('stats_services') }}</div></div>
+    <div class="stat-card"><div class="num">{{ "{:,}".format(stats.orders) }}</div><div class="lbl2">{{ t('stats_orders') }}</div></div>
+    <div class="stat-card"><div class="num">{{ "{:,}".format(stats.users) }}</div><div class="lbl2">{{ t('stats_users') }}</div></div>
   </div>
 </section>
 
 {% if featured %}
-<section class="section">
+<section class="section" style="padding-top:0;">
   <h2>{{ t('featured') }}</h2>
   <p class="lead">{{ t('explore_services') }}</p>
-  <div class="grid grid-3">
+  <div class="svc-grid">
     {% for s in featured %}
-    <div class="card svc-card">
-      <h3>{{ s.name }}</h3>
-      <div class="svc-meta"><span>{{ t('min') }}: {{ s.min_quantity }}</span><span>{{ t('max') }}: {{ s.max_quantity }}</span></div>
-      <div class="svc-price">
-        <span class="p">{{ t('from_price') }} {{ fmt_money(s.selling_price_usd, 'USD') }}{{ t('per_1000') }}</span>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('order_now') }}</a>
+    <div class="svc-card">
+      <div class="svc-card-top">
+        {% if s.is_featured %}<div class="ribbon">{{ t('most_requested') }}</div>{% endif %}
+        <div class="plat-3d">
+          <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>
+        </div>
+      </div>
+      <div class="svc-card-body">
+        <h3>{{ s.name }}</h3>
+        <div class="svc-card-meta">
+          <span>{{ t('min') }}: {{ "{:,}".format(s.min_quantity) }}</span>
+          <span>{{ t('max') }}: {{ "{:,}".format(s.max_quantity) }}</span>
+        </div>
+        <div class="svc-card-foot">
+          <span class="svc-price">{{ fmt_price(s.selling_price_usd) }}<small>/1K</small></span>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('order_now') }}</a>
+        </div>
       </div>
     </div>
     {% endfor %}
@@ -41,36 +51,59 @@
 </section>
 {% endif %}
 
-<section class="section">
-  <h2>{{ t('how_it_works') }}</h2>
-  <p class="lead">&nbsp;</p>
-  <div class="grid grid-3">
-    <div class="card step"><div class="n">1</div><h3>{{ t('step1_title') }}</h3><p>{{ t('step1_desc') }}</p></div>
-    <div class="card step"><div class="n">2</div><h3>{{ t('step2_title') }}</h3><p>{{ t('step2_desc') }}</p></div>
-    <div class="card step"><div class="n">3</div><h3>{{ t('step3_title') }}</h3><p>{{ t('step3_desc') }}</p></div>
-  </div>
-</section>
-
-<section class="section">
+<section class="section" style="padding-top:0;">
   <h2>{{ t('why_us') }}</h2>
-  <p class="lead">&nbsp;</p>
-  <div class="grid grid-3">
-    <div class="card step"><div class="n">⚡</div><h3>{{ t('why1_title') }}</h3><p>{{ t('why1_desc') }}</p></div>
-    <div class="card step"><div class="n">💎</div><h3>{{ t('why2_title') }}</h3><p>{{ t('why2_desc') }}</p></div>
-    <div class="card step"><div class="n">🔒</div><h3>{{ t('why3_title') }}</h3><p>{{ t('why3_desc') }}</p></div>
+  <p class="lead">{{ t('subheading') }}</p>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="f-ico">🚀</div>
+      <h3>{{ t('feat_fast') }}</h3>
+      <p>{{ t('feat_fast_desc') }}</p>
+    </div>
+    <div class="feat-card">
+      <div class="f-ico">💰</div>
+      <h3>{{ t('feat_price') }}</h3>
+      <p>{{ t('feat_price_desc') }}</p>
+    </div>
+    <div class="feat-card">
+      <div class="f-ico">🛡️</div>
+      <h3>{{ t('feat_safe') }}</h3>
+      <p>{{ t('feat_safe_desc') }}</p>
+    </div>
   </div>
 </section>
 
-<section class="section">
-  <div class="card" style="text-align:center; padding:3rem 1.5rem;">
-    <h2>{{ t('cta_title') }}</h2>
-    <p class="lead">{{ t('cta_desc') }}</p>
-    <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
+<section class="section" style="padding-top:0;">
+  <div class="marketing">
+    <div class="m-art">
+      <img src="/3d-assets/money-bag.png" alt="" onerror="this.outerHTML='💰'">
+    </div>
+    <div>
+      <h3>{{ t('m_save_title') }}</h3>
+      <p>{{ t('m_save_desc') }}</p>
+      <a class="btn btn-primary" href="{{ url_for('services') }}">{{ t('explore_services') }}</a>
+    </div>
   </div>
 </section>
-{% endblock %}
 
-{% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="{{ url_for('static', filename='js/hero3d.js') }}"></script>
+<section class="section" style="padding-top:0;">
+  <div class="marketing">
+    <div>
+      <h3>{{ t('m_try_title') }}</h3>
+      <p>{{ t('m_try_desc') }}</p>
+      <a class="btn btn-outline" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
+    </div>
+    <div class="m-art">
+      <img src="/3d-assets/person-laptop.png" alt="" onerror="this.outerHTML='💻'">
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0; text-align:center;">
+  <div class="card" style="background:linear-gradient(135deg,#F97316,#EA580C); border:0; color:#fff;">
+    <h2 style="color:#fff;">{{ t('cta_title') }}</h2>
+    <p style="opacity:.9; margin-bottom:1.5rem;">{{ t('cta_desc') }}</p>
+    <a class="btn" style="background:#fff; color:var(--primary-dark);" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
+  </div>
+</section>
 {% endblock %}

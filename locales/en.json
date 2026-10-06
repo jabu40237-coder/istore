@@ -245,5 +245,19 @@
   "new_password": "New password",
   "wrong_password": "Current password is wrong",
   "password_too_short": "Password must be at least 8 characters",
-  "ok": "Done"
+  "ok": "Done",
+  "most_requested": "Most Requested",
+  "feat_fast": "Fast Execution",
+  "feat_fast_desc": "Your orders are executed quickly through an automated system.",
+  "feat_price": "Competitive Prices",
+  "feat_price_desc": "The best prices for all social media services.",
+  "feat_safe": "Safety & Trust",
+  "feat_safe_desc": "Secure payment and automatic refund if a service is not delivered.",
+  "m_save_title": "Save More",
+  "m_save_desc": "Our prices beat everyone. And if an order isn't completed, your money is refunded automatically.",
+  "m_try_title": "Try It Free",
+  "m_try_desc": "Register and browse the full services catalog. Decide after you see.",
+  "top_up": "Top Up",
+  "choose_service": "Choose a service",
+  "pick_service_hint": "Pick a platform and category, then choose a service to continue."
 }

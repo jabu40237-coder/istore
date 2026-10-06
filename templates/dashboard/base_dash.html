@@ -1,24 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="dash">
-  <aside class="side card">
-    <a href="{{ url_for('user.dashboard') }}" class="{% if request.endpoint=='user.dashboard' %}active{% endif %}">📊 {{ t('dashboard') }}</a>
-    <a href="{{ url_for('user.new_order') }}" class="{% if request.endpoint=='user.new_order' %}active{% endif %}">➕ {{ t('new_order') }}</a>
-    <a href="{{ url_for('user.orders') }}" class="{% if request.endpoint in ['user.orders','user.order_detail'] %}active{% endif %}">📦 {{ t('my_orders') }}</a>
-    <a href="{{ url_for('user.wallet') }}" class="{% if request.endpoint=='user.wallet' %}active{% endif %}">💰 {{ t('wallet') }}</a>
-    <a href="{{ url_for('user.notifications') }}" class="{% if request.endpoint=='user.notifications' %}active{% endif %}">🔔 {{ t('notifications') }}</a>
-    <a href="{{ url_for('user.support') }}" class="{% if request.endpoint in ['user.support','user.ticket_detail'] %}active{% endif %}">🎧 {{ t('support') }}</a>
-    <a href="{{ url_for('user.profile') }}" class="{% if request.endpoint=='user.profile' %}active{% endif %}">👤 {{ t('profile') }}</a>
+  <aside class="side">
+    <a href="{{ url_for('user.dashboard') }}" class="{% if request.endpoint=='user.dashboard' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>{{ t('dashboard') }}</a>
+    <a href="{{ url_for('user.new_order') }}" class="{% if request.endpoint=='user.new_order' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5h-2v6H5v2h6v6h2v-6h6v-2h-6V7z"/></svg>{{ t('new_order') }}</a>
+    <a href="{{ url_for('user.orders') }}" class="{% if request.endpoint in ['user.orders','user.order_detail'] %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 00-2 2v3h20V4a2 2 0 00-2-2zM2 9v11a2 2 0 002 2h16a2 2 0 002-2V9H2zm5 3h4v4H7v-4z"/></svg>{{ t('my_orders') }}</a>
+    <a href="{{ url_for('user.wallet') }}" class="{% if request.endpoint=='user.wallet' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 002-2zm0 4H4V6h16v2zM4 18v-8h16v8H4z"/></svg>{{ t('wallet') }}</a>
+    <a href="{{ url_for('user.notifications') }}" class="{% if request.endpoint=='user.notifications' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7v4l-2 3h18l-2-3V9a7 7 0 00-7-7zm0 20a2.5 2.5 0 002.5-2.5h-5A2.5 2.5 0 0012 22z"/></svg>{{ t('notifications') }}</a>
+    <a href="{{ url_for('user.support') }}" class="{% if request.endpoint in ['user.support','user.ticket_detail'] %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>{{ t('support') }}</a>
+    <a href="{{ url_for('user.profile') }}" class="{% if request.endpoint=='user.profile' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>{{ t('profile') }}</a>
+    <a href="{{ url_for('logout') }}">
+      <svg viewBox="0 0 24 24"><path d="M17 7l-1.4 1.4L18.2 11H8v2h10.2l-2.6 2.6L17 17l5-5-5-5zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>{{ t('logout') }}</a>
   </aside>
   <div class="dash-main">
     {% block dash %}{% endblock %}
   </div>
 </div>
-<nav class="bottom-nav">
-  <a href="{{ url_for('user.dashboard') }}" class="{% if request.endpoint=='user.dashboard' %}active{% endif %}">📊</a>
-  <a href="{{ url_for('user.new_order') }}" class="{% if request.endpoint=='user.new_order' %}active{% endif %}">➕</a>
-  <a href="{{ url_for('user.orders') }}" class="{% if request.endpoint=='user.orders' %}active{% endif %}">📦</a>
-  <a href="{{ url_for('user.wallet') }}" class="{% if request.endpoint=='user.wallet' %}active{% endif %}">💰</a>
-  <a href="{{ url_for('user.profile') }}" class="{% if request.endpoint=='user.profile' %}active{% endif %}">👤</a>
-</nav>
 {% endblock %}
