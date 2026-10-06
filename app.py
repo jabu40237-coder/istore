@@ -23,6 +23,7 @@ def create_app():
     init_db()
     auth_svc.ensure_roles()
     _seed_defaults()
+    _bootstrap_admin()
 
     # ---------- i18n / request context ----------
     @app.before_request
@@ -183,6 +184,38 @@ def _setting(key: str) -> str:
     try:
         s = db.query(SystemSetting).filter_by(key=key).first()
         return s.value if s else ""
+    finally:
+        db.close()
+
+
+def _bootstrap_admin():
+    """First-run admin bootstrap for hosted deploys (no shell access).
+
+    If ADMIN_EMAIL + ADMIN_PASSWORD env vars are set and no SUPER_ADMIN
+    exists yet, create/promote that user. Safe to run on every boot.
+    """
+    import os
+    email = os.environ.get("ADMIN_EMAIL", "").strip()
+    password = os.environ.get("ADMIN_PASSWORD", "")
+    if not email or not password:
+        return
+    from models import User, Role, UserRole
+    db = get_session()
+    try:
+        admin_role = db.query(Role).filter_by(name="SUPER_ADMIN").first()
+        if admin_role and db.query(UserRole).filter_by(role_id=admin_role.id).first():
+            return  # an admin already exists — do nothing
+        username = email.split("@")[0]
+        uid, err = auth_svc.create_user(email, username, password, name="Admin",
+                                       roles=("SUPER_ADMIN", "ADMIN"))
+        if err == "email_exists":
+            u = db.query(User).filter_by(email=email).first()
+            for rn in ("SUPER_ADMIN", "ADMIN"):
+                r = db.query(Role).filter_by(name=rn).first()
+                if r and not db.query(UserRole).filter_by(
+                        user_id=u.id, role_id=r.id).first():
+                    db.add(UserRole(user_id=u.id, role_id=r.id))
+            db.commit()
     finally:
         db.close()
 
