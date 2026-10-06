@@ -16,6 +16,12 @@ from models import User, Service, Order, Notification, now
 from services import wallet as wallet_svc
 
 API = f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}"
+
+
+def set_api_base(url: str):
+    """Override the Telegram API base (e.g. vault surrogate URL)."""
+    global API
+    API = url.rstrip("/")
 STR = {
     "ku": {"welcome": "بخێر بهێن بۆ ئایستۆر 🏪\n/order — داواکاریا نوو\n/orders — داواکاریێن من\n/balance — باڵانس\n/services — خزمەتگوزاری\n/support — پشتیڤانی\n/language — زمان\n/help — هاریکاری",
            "balance": "باڵانسا تە: ${b}",

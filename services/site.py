@@ -7,6 +7,7 @@ from config import Config
 
 SOCIAL_PLATFORMS = [
     ("telegram", "Telegram"),
+    ("telegram_channel", "Telegram Channel"),
     ("instagram", "Instagram"),
     ("tiktok", "TikTok"),
     ("facebook", "Facebook"),
