@@ -19,6 +19,8 @@ def create_app():
     app.config["SECRET_KEY"] = Config.SECRET_KEY
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    if Config.ENV == "production":
+        app.config["SESSION_COOKIE_SECURE"] = True
 
     init_db()
     auth_svc.ensure_roles()
@@ -34,17 +36,34 @@ def create_app():
         g.lang = session.get("lang") or _user_lang() or "ku"
         g.rtl = i18n.is_rtl(g.lang)
         g.user = auth_svc.current_user()
+        # ensure a CSRF token exists for every session (guests included)
+        if not session.get("csrf"):
+            import secrets
+            session["csrf"] = secrets.token_hex(16)
+        # global CSRF protection for all POST (except session-less auth forms)
+        if request.method == "POST" and request.endpoint not in (
+                "login", "register", "health"):
+            token = request.form.get("csrf", "")
+            if not token or token != session.get("csrf"):
+                abort(400)
         # maintenance mode
         if _setting("maintenance_mode") == "1" and not request.path.startswith(("/admin", "/static")):
             return render_template("maintenance.html"), 503
 
     @app.context_processor
     def _ctx():
+        from services import site as site_svc
+
         def tr(key, **kw):
             return i18n.t(g.get("lang", "ku"), key, **kw)
+        cur = ((g.get("user").currency if g.get("user") else None)
+               or session.get("currency") or Config.DEFAULT_CURRENCY)
         return dict(t=tr, lang=g.get("lang", "ku"),
                     rtl=g.get("rtl", True), user=g.get("user"),
-                    fmt_money=fmt_money)
+                    fmt_money=fmt_money,
+                    fmt_price=lambda a, c=None: site_svc.fmt_price(a, c or cur),
+                    currency=cur, rate=site_svc.get_rate(cur),
+                    social_links=site_svc.get_social_links())
 
     # ---------- security headers ----------
     @app.after_request
@@ -76,18 +95,51 @@ def create_app():
         try:
             q = request.args.get("q", "").strip()
             platform = request.args.get("platform", "")
+            category = request.args.get("category", "")
+            sort = request.args.get("sort", "recommended")
+            f_refill = request.args.get("refill", "")
+            f_cancel = request.args.get("cancel", "")
             query = db.query(Service).filter_by(status="active")
             if q:
                 like = f"%{q}%"
-                query = query.filter(Service.name.ilike(like))
+                query = query.filter(
+                    (Service.name.ilike(like)) | (Service.description.ilike(like)))
             if platform:
                 p = db.query(Platform).filter_by(code=platform).first()
                 if p:
                     query = query.filter_by(platform_id=p.id)
-            items = query.order_by(Service.sort_order, Service.id).limit(200).all()
+            if category:
+                c = db.query(Category).filter_by(id=int(category)).first() \
+                    if category.isdigit() else None
+                if c:
+                    query = query.filter_by(category_id=c.id)
+            if f_refill == "1":
+                query = query.filter_by(supports_refill=True)
+            if f_cancel == "1":
+                query = query.filter_by(supports_cancel=True)
+            if sort == "price_asc":
+                query = query.order_by(Service.selling_price_usd.asc())
+            elif sort == "price_desc":
+                query = query.order_by(Service.selling_price_usd.desc())
+            elif sort == "newest":
+                query = query.order_by(Service.created_at.desc())
+            else:  # recommended
+                query = query.order_by(Service.is_featured.desc(),
+                                      Service.sort_order, Service.id)
+            items = query.limit(200).all()
             platforms = db.query(Platform).order_by(Platform.sort_order).all()
+            categories = db.query(Category).filter_by(is_hidden=False).order_by(
+                Category.sort_order).all()
+            fav_ids = set()
+            if g.user:
+                from models import Favorite
+                fav_ids = {f.service_id for f in db.query(Favorite).filter_by(
+                    user_id=g.user.id).all()}
             return render_template("services.html", services=items,
-                                   platforms=platforms, q=q, platform=platform)
+                                   platforms=platforms, categories=categories,
+                                   q=q, platform=platform, category=category,
+                                   sort=sort, f_refill=f_refill,
+                                   f_cancel=f_cancel, fav_ids=fav_ids)
         finally:
             db.close()
 
@@ -95,12 +147,104 @@ def create_app():
     def service_detail(sid):
         db = get_session()
         try:
+            from services import forms as form_svc
+            from models import Favorite, RecentlyViewed
             svc = db.query(Service).filter_by(id=sid, status="active").first()
             if not svc:
                 abort(404)
-            return render_template("service_detail.html", svc=svc)
+            platform = db.query(Platform).filter_by(id=svc.platform_id).first() \
+                if svc.platform_id else None
+            category = db.query(Category).filter_by(id=svc.category_id).first() \
+                if svc.category_id else None
+            schema = form_svc.get_form_schema(svc)
+            is_fav = False
+            if g.user:
+                is_fav = db.query(Favorite).filter_by(
+                    user_id=g.user.id, service_id=svc.id).first() is not None
+                # track recently viewed (upsert)
+                rv = db.query(RecentlyViewed).filter_by(
+                    user_id=g.user.id, service_id=svc.id).first()
+                if rv:
+                    rv.viewed_at = now()
+                else:
+                    db.add(RecentlyViewed(user_id=g.user.id, service_id=svc.id))
+                db.commit()
+            return render_template("service_detail.html", svc=svc,
+                                   platform=platform, category=category,
+                                   schema=schema, is_fav=is_fav)
         finally:
             db.close()
+
+    @app.route("/favorite/<int:sid>", methods=["POST"])
+    def favorite_toggle(sid):
+        if not g.user:
+            abort(401)
+        db = get_session()
+        try:
+            from models import Favorite
+            f = db.query(Favorite).filter_by(user_id=g.user.id,
+                                             service_id=sid).first()
+            if f:
+                db.delete(f)
+                on = False
+            else:
+                db.add(Favorite(user_id=g.user.id, service_id=sid))
+                on = True
+            db.commit()
+            return jsonify({"ok": True, "favorite": on})
+        finally:
+            db.close()
+
+    @app.route("/favorites")
+    def favorites():
+        if not g.user:
+            return redirect(url_for("login", next="/favorites"))
+        db = get_session()
+        try:
+            from models import Favorite
+            ids = [f.service_id for f in db.query(Favorite).filter_by(
+                user_id=g.user.id).order_by(Favorite.created_at.desc()).all()]
+            items = db.query(Service).filter(
+                Service.id.in_(ids), Service.status == "active").all() if ids else []
+            order = {sid: i for i, sid in enumerate(ids)}
+            items.sort(key=lambda s: order.get(s.id, 0))
+            return render_template("services.html", services=items,
+                                   platforms=[], categories=[], q="",
+                                   platform="", category="", sort="",
+                                   f_refill="", f_cancel="",
+                                   fav_ids=set(ids), favorites_page=True)
+        finally:
+            db.close()
+
+    @app.route("/compare")
+    def compare():
+        db = get_session()
+        try:
+            ids = [int(x) for x in request.args.get("ids", "").split(",")
+                   if x.strip().isdigit()][:3]
+            items = db.query(Service).filter(
+                Service.id.in_(ids), Service.status == "active").all() if ids else []
+            return render_template("compare.html", services=items)
+        finally:
+            db.close()
+
+    @app.route("/set-currency", methods=["POST"])
+    def set_currency():
+        cur = request.form.get("currency", "USD").upper()
+        if cur not in ("USD", "IQD"):
+            cur = "USD"
+        if g.user:
+            db = get_session()
+            try:
+                u = db.query(User).filter_by(id=g.user.id).first()
+                if u:
+                    u.currency = cur
+                    db.commit()
+            finally:
+                db.close()
+        else:
+            session["currency"] = cur
+        return redirect(request.referrer or url_for("index"))
 
     for page in ["about", "faq", "contact", "terms", "privacy"]:
         def _mk(p):
@@ -243,9 +387,15 @@ def _seed_defaults():
             "usd_to_iqd": str(Config.USD_TO_IQD),
             "maintenance_mode": "0",
         }
+        # default settings — atomic under multiple workers (INSERT OR IGNORE)
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        is_pg = db.bind.dialect.name == "postgresql"
         for k, v in defaults.items():
-            if not db.query(SystemSetting).filter_by(key=k).first():
-                db.add(SystemSetting(key=k, value=v))
+            stmt = (pg_insert if is_pg else sqlite_insert)(SystemSetting).values(
+                key=k, value=v)
+            stmt = stmt.on_conflict_do_nothing(index_elements=["key"])
+            db.execute(stmt)
         db.commit()
     finally:
         db.close()

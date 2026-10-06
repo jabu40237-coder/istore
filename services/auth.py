@@ -137,3 +137,25 @@ def create_user(email, username, password, name="", phone="", roles=("CUSTOMER",
         return uid, ""
     finally:
         db.close()
+
+
+# ---------- Telegram account linking (secure, code-based) ----------
+_tg_codes = {}  # code -> (user_id, expires_at)
+
+
+def issue_telegram_code(user_id: int, ttl_s: int = 600) -> str:
+    """Issue a one-time 6-digit linking code for /link <code>."""
+    import secrets, time as _t
+    code = f"{secrets.randbelow(900000) + 100000}"
+    _tg_codes[code] = (user_id, _t.time() + ttl_s)
+    return code
+
+
+def verify_telegram_code(code: str):
+    """Verify a linking code. Returns user_id or None. One-time use."""
+    import time as _t
+    rec = _tg_codes.pop(code, None)
+    if not rec:
+        return None
+    uid, exp = rec
+    return uid if _t.time() < exp else None

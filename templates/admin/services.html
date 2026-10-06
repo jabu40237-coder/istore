@@ -3,6 +3,7 @@
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.6rem;">
   <h2>{{ t('services') }}</h2>
   <form method="post" action="{{ url_for('admin.services_sync') }}">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
     <button class="btn btn-primary btn-sm" type="submit">{{ t('sync_now') }}</button>
   </form>
 </div>

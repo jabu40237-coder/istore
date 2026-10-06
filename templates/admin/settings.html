@@ -5,6 +5,7 @@
 <div class="card">
   <h3 style="margin-bottom:1rem;">General</h3>
   <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
     <div class="field"><label class="lbl">Site name</label>
       <input class="input" name="site_name" value="{{ vals.site_name }}"></div>
     <div class="field"><label class="lbl">Accent color</label>

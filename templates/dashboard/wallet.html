@@ -1,7 +1,14 @@
 {% extends "dashboard/base_dash.html" %}
 {% block dash %}
 <div class="grid grid-4" style="margin-bottom:1.2rem;">
-  <div class="card stat-card"><div class="num">{{ fmt_money(balance, 'USD') }}</div><div class="lbl2">{{ t('current_balance') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ fmt_price(balance, 'USD') }}</div><div class="lbl2">{{ t('current_balance') }}</div></div>
+  {% if currency == 'IQD' %}
+  <div class="card stat-card"><div class="num">{{ fmt_price(balance, 'IQD') }}</div><div class="lbl2">IQD</div></div>
+  {% endif %}
+</div>
+<div class="card" style="margin-bottom:1.2rem; border-style:dashed;">
+  <h3 style="margin-bottom:.4rem;">{{ t('payment_coming_soon') }}</h3>
+  <p style="color:var(--text-muted); font-size:.92rem;">{{ t('payment_coming_soon_desc') }}</p>
 </div>
 <div class="card">
   <h3 style="margin-bottom:1rem;">{{ t('transactions') }}</h3>
@@ -10,9 +17,10 @@
     <tr><th>#</th><th>{{ t('status') }}</th><th>{{ t('charge') }}</th><th>{{ t('balance') }}</th><th>{{ t('date') }}</th></tr>
     {% for x in txs %}
     <tr>
-      <td>{{ x.id }}</td><td>{{ x.type }}</td>
-      <td style="color:{{ '#00d68f' if x.amount_usd >= 0 else '#ff5c5c' }};">{{ fmt_money(x.amount_usd, x.currency) }}</td>
-      <td>{{ fmt_money(x.balance_after_usd, x.currency) }}</td>
+      <td>{{ x.id }}</td>
+      <td>{{ t('tx_' ~ x.type) if ('tx_' ~ x.type) else x.type }}</td>
+      <td style="color:{{ '#00d68f' if x.amount_usd >= 0 else '#ff5c5c' }};">{{ fmt_price(x.amount_usd, x.currency) }}</td>
+      <td>{{ fmt_price(x.balance_after_usd, x.currency) }}</td>
       <td>{{ x.created_at.strftime('%Y-%m-%d %H:%M') if x.created_at }}</td>
     </tr>
     {% endfor %}

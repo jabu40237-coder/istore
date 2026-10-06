@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ t('compare_services') }} — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('compare_services') }}</h1></div>
+<section class="section" style="padding-top:1.2rem;">
+  {% if services and services|length > 1 %}
+  <div class="table-wrap"><table class="tbl cmp-tbl">
+    <tr><th></th>{% for s in services %}<th>{{ s.name }}</th>{% endfor %}</tr>
+    <tr><td><strong>{{ t('svc_id', id='') }}</strong></td>{% for s in services %}<td>#{{ s.id }}</td>{% endfor %}</tr>
+    <tr><td><strong>{{ t('price_per_1000') }}</strong></td>{% for s in services %}<td>{{ fmt_price(s.selling_price_usd) }}</td>{% endfor %}</tr>
+    <tr><td><strong>{{ t('min') }}</strong></td>{% for s in services %}<td>{{ "{:,}".format(s.min_quantity) }}</td>{% endfor %}</tr>
+    <tr><td><strong>{{ t('max') }}</strong></td>{% for s in services %}<td>{{ "{:,}".format(s.max_quantity) }}</td>{% endfor %}</tr>
+    <tr><td><strong>{{ t('badge_refill') }}</strong></td>{% for s in services %}<td>{{ '✓' if s.supports_refill else '—' }}</td>{% endfor %}</tr>
+    <tr><td><strong>{{ t('badge_cancel') }}</strong></td>{% for s in services %}<td>{{ '✓' if s.supports_cancel else '—' }}</td>{% endfor %}</tr>
+    <tr><td><strong>{{ t('service_type_label') }}</strong></td>{% for s in services %}<td>{{ s.service_type or 'Default' }}</td>{% endfor %}</tr>
+    <tr><td></td>{% for s in services %}<td><a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('view_details') }}</a></td>{% endfor %}</tr>
+  </table></div>
+  {% else %}
+  <div class="empty"><div class="ico">⚖️</div><p>{{ t('compare_services') }} — /compare?ids=1,2,3</p></div>
+  {% endif %}
+</section>
+{% endblock %}

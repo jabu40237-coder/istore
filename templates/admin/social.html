@@ -1,0 +1,19 @@
+{% extends "base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1.2rem;">{{ t('social_links') }}</h2>
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    {% for l in links %}
+    <div class="soc-row">
+      <div class="soc-name">{{ names.get(l.platform, l.platform) }}</div>
+      <div class="field" style="flex:1; margin:0;">
+        <input class="input" type="url" name="url_{{ l.platform }}" value="{{ l.url }}" dir="ltr" placeholder="https://">
+      </div>
+      <label class="chk"><input type="checkbox" name="en_{{ l.platform }}" {% if l.is_enabled %}checked{% endif %}> {{ t('available') }}</label>
+    </div>
+    {% endfor %}
+    <button class="btn btn-primary" type="submit" style="margin-top:1rem;">{{ t('save') }}</button>
+  </form>
+</div>
+{% endblock %}

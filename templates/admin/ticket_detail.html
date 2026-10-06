@@ -1,0 +1,28 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:.4rem;">#{{ ticket.id }} — {{ ticket.subject }}</h2>
+<p style="color:var(--text-muted); margin-bottom:1.2rem;">{{ u.username if u else ticket.user_id }} · <span class="status-pill st-{{ ticket.status }}">{{ ticket.status }}</span></p>
+<div class="card" style="margin-bottom:1.2rem;">
+  {% for m in msgs %}
+  <div style="margin-bottom:.9rem; padding:.7rem 1rem; border-radius:10px; background:{{ 'rgba(108,92,231,.1)' if m.is_staff else 'rgba(255,255,255,.03)' }};">
+    <div style="font-size:.75rem; color:var(--text-muted); margin-bottom:.3rem;">{% if m.is_staff %}STAFF{% else %}{{ u.username if u else '' }}{% endif %} · {{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at }}</div>
+    <div>{{ m.body }}</div>
+  </div>
+  {% endfor %}
+</div>
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <div class="field"><label class="lbl">{{ t('message') }}</label>
+      <textarea class="input" name="message" rows="4"></textarea></div>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" type="submit" name="action" value="reply">{{ t('reply') }}</button>
+      {% if ticket.status != 'CLOSED' %}
+      <button class="btn btn-ghost btn-sm" type="submit" name="action" value="close">{{ t('close') }}</button>
+      {% else %}
+      <button class="btn btn-ghost btn-sm" type="submit" name="action" value="reopen">{{ t('reopen') }}</button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

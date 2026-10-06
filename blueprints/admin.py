@@ -171,8 +171,13 @@ def order_refund(oid):
 def users():
     db = get_session()
     try:
-        items = db.query(User).order_by(User.created_at.desc()).limit(200).all()
-        return render_template("admin/users.html", users=items)
+        q = request.args.get("q", "").strip()
+        query = db.query(User)
+        if q:
+            like = f"%{q}%"
+            query = query.filter((User.email.ilike(like)) | (User.username.ilike(like)))
+        items = query.order_by(User.created_at.desc()).limit(200).all()
+        return render_template("admin/users.html", users=items, q=q)
     finally:
         db.close()
 
@@ -192,6 +197,101 @@ def user_adjust(uid):
         db.commit()
         _audit("wallet_adjust", f"user:{uid}", {"amount": str(amount), "reason": reason})
         return redirect(url_for("admin.users"))
+    finally:
+        db.close()
+
+
+@bp.route("/users/<int:uid>/suspend", methods=["POST"])
+@auth_svc.admin_required
+def user_suspend(uid):
+    db = get_session()
+    try:
+        u = db.query(User).filter_by(id=uid).first()
+        if not u:
+            abort(404)
+        if u.id == g.user.id or any(r.name in ("SUPER_ADMIN", "ADMIN") for r in u.roles):
+            abort(403)
+        u.is_active = False
+        db.commit()
+        _audit("user_suspend", f"user:{uid}", {})
+        return redirect(url_for("admin.users"))
+    finally:
+        db.close()
+
+
+@bp.route("/users/<int:uid>/activate", methods=["POST"])
+@auth_svc.admin_required
+def user_activate(uid):
+    db = get_session()
+    try:
+        u = db.query(User).filter_by(id=uid).first()
+        if not u:
+            abort(404)
+        u.is_active = True
+        db.commit()
+        _audit("user_activate", f"user:{uid}", {})
+        return redirect(url_for("admin.users"))
+    finally:
+        db.close()
+
+
+@bp.route("/tickets")
+@auth_svc.admin_required
+def tickets():
+    from models import Ticket
+    db = get_session()
+    try:
+        status = request.args.get("status", "")
+        q = db.query(Ticket)
+        if status:
+            q = q.filter_by(status=status)
+        items = q.order_by(Ticket.updated_at.desc()).limit(200).all()
+        uids = {t.user_id for t in items}
+        users = {u.id: u for u in db.query(User).filter(User.id.in_(uids)).all()} if uids else {}
+        return render_template("admin/tickets.html", tickets=items, users=users,
+                               status=status)
+    finally:
+        db.close()
+
+
+@bp.route("/tickets/<int:tid>", methods=["GET", "POST"])
+@auth_svc.admin_required
+def ticket_detail(tid):
+    from models import Ticket, TicketMessage
+    db = get_session()
+    try:
+        t = db.query(Ticket).filter_by(id=tid).first()
+        if not t:
+            abort(404)
+        if request.method == "POST":
+            body = request.form.get("message", "").strip()
+            action = request.form.get("action", "reply")
+            if action == "close":
+                t.status = "CLOSED"
+            elif action == "reopen":
+                t.status = "OPEN"
+            elif body:
+                db.add(TicketMessage(ticket_id=t.id, user_id=g.user.id,
+                                     body=body, is_staff=True))
+                t.status = "WAITING_USER"
+            db.commit()
+            _audit("ticket_reply", f"ticket:{tid}", {"action": action})
+            if action not in ("close", "reopen") and body:
+                from models import Notification
+                db.add(Notification(user_id=t.user_id, type="SUPPORT",
+                                    title="support_reply",
+                                    body=f"Support replied to ticket #{t.id}"))
+                db.commit()
+                try:
+                    from telegram_bot import notify_user as _tg
+                    _tg(t.user_id, f"Support replied to your ticket #{t.id}")
+                except Exception:
+                    pass
+            return redirect(url_for("admin.ticket_detail", tid=tid))
+        msgs = db.query(TicketMessage).filter_by(ticket_id=t.id).order_by(
+            TicketMessage.created_at).all()
+        u = db.query(User).filter_by(id=t.user_id).first()
+        return render_template("admin/ticket_detail.html", ticket=t, msgs=msgs, u=u)
     finally:
         db.close()
 
@@ -318,3 +418,25 @@ def pricing():
 def _sys(db, key: str) -> str:
     s = db.query(SystemSetting).filter_by(key=key).first()
     return s.value if s else ""
+
+
+@bp.route("/social", methods=["GET", "POST"])
+@auth_svc.admin_required
+def social():
+    from models import SocialLink
+    from services import site as site_svc
+    db = get_session()
+    try:
+        links = site_svc.get_all_social_links()
+        if request.method == "POST":
+            for l in links:
+                url = request.form.get(f"url_{l.platform}", "").strip()
+                l.url = url
+                l.is_enabled = bool(request.form.get(f"en_{l.platform}")) and bool(url)
+            db.commit()
+            _audit("social_change", "social_links", {})
+            return redirect(url_for("admin.social"))
+        return render_template("admin/social.html", links=links,
+                               names=dict(site_svc.SOCIAL_PLATFORMS))
+    finally:
+        db.close()

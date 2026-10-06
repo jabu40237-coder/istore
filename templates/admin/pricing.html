@@ -3,6 +3,7 @@
 <h2 style="margin-bottom:1rem;">{{ t('price') }} — rules</h2>
 <div class="card" style="max-width:520px; margin-bottom:1.2rem;">
   <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
     <div class="field"><label class="lbl">Scope</label>
       <select class="select" name="scope"><option value="global">global</option></select></div>
     <div class="field"><label class="lbl">Markup %</label>

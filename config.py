@@ -11,9 +11,18 @@ def _get(name: str, default: str = "") -> str:
     return os.environ.get(name, default)
 
 
+def _db_default() -> str:
+    """Deployment-safe default SQLite path: env override, else next to the app."""
+    env = os.environ.get("SQLITE_PATH", "").strip()
+    if env:
+        return env if "://" in env else f"sqlite:///{env}"
+    here = os.path.dirname(os.path.abspath(__file__))
+    return f"sqlite:///{os.path.join(here, 'istore.db')}"
+
+
 class Config:
     SECRET_KEY = _get("SESSION_SECRET", "dev-secret-change-me")
-    DATABASE_URL = _get("DATABASE_URL", "sqlite:////home/hatch/workspace/istore/istore.db")
+    DATABASE_URL = _get("DATABASE_URL", _db_default())
     ENV = _get("APP_ENV", "development")
 
     # Provider (KD1S) — server-side only, never exposed to frontend

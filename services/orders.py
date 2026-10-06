@@ -38,15 +38,35 @@ def _log_event(db, order: Order, event: str, old: str = "", new: str = "", meta=
 
 def validate_order_input(service: Service, link: str, quantity: int,
                          input_data: dict) -> str:
-    """Returns error key or '' if valid."""
+    """Returns error key or '' if valid. Schema-driven: checks required fields."""
+    from services import forms as form_svc
     stype = (service.service_type or "Default").lower()
-    needs_link = "comment" not in stype or True  # most types need a link
-    if quantity < service.min_quantity or quantity > service.max_quantity:
+    data = input_data or {}
+    if "subscri" in stype:
+        # subscriptions: quantity is derived from posts, not the quantity field
+        try:
+            posts = int(data.get("posts", 0))
+        except (ValueError, TypeError):
+            posts = 0
+        if posts <= 0:
+            return "invalid_quantity"
+    elif quantity < service.min_quantity or quantity > service.max_quantity:
         return "invalid_quantity"
-    if needs_link and (not link or not link.startswith("http")):
-        # subscriptions use username instead of link
-        if "subscri" not in stype and "follower" not in stype:
-            return "invalid_link"
+    schema = form_svc.get_form_schema(service)
+    for f in schema:
+        if not f["required"]:
+            continue
+        p = f["param"]
+        if p == "link":
+            # subscriptions use username instead of a link
+            if "subscri" in stype:
+                continue
+            if not link or not link.startswith("http"):
+                return "invalid_link"
+        elif p == "quantity":
+            continue  # already checked against min/max
+        elif not str(data.get(p, "")).strip():
+            return "missing_field"
     return ""
 
 
@@ -76,11 +96,18 @@ def create_order(user_id: int, service_id: int, link: str, quantity: int,
         if existing:
             return {"ok": True, "order_id": existing.id, "duplicate": True}
 
-        charge = _customer_charge(service, quantity)
-        cost = _provider_cost(service, quantity)
-        profit = charge - cost
+        # subscriptions: effective quantity comes from posts count
+        stype = (service.service_type or "").lower()
+        eff_quantity = quantity
+        if "subscri" in stype:
+            try:
+                eff_quantity = int((input_data or {}).get("posts", 0))
+            except (ValueError, TypeError):
+                eff_quantity = 0
 
-        # 1) reserve wallet
+        charge = _customer_charge(service, eff_quantity)
+        cost = _provider_cost(service, eff_quantity)
+        profit = charge - cost        # 1) reserve wallet
         try:
             wallet_svc.apply_transaction(
                 db, user_id, "order_charge", -charge, currency=currency,
@@ -92,7 +119,7 @@ def create_order(user_id: int, service_id: int, link: str, quantity: int,
 
         order = Order(
             user_id=user_id, service_id=service_id, provider_id=service.provider_id,
-            idempotency_key=idempotency_key, quantity=quantity, link=link,
+            idempotency_key=idempotency_key, quantity=eff_quantity, link=link,
             input_data=input_data or {}, provider_cost_usd=cost,
             customer_charge_usd=charge, profit_usd=profit, currency=currency,
             exchange_rate=exchange_rate, status="PENDING",
@@ -105,7 +132,7 @@ def create_order(user_id: int, service_id: int, link: str, quantity: int,
         # 2) provider request
         extra = dict(input_data or {})
         result = provider.create_order(service.provider_service_id, link=link,
-                                       quantity=quantity, extra=extra)
+                                       quantity=eff_quantity, extra=extra)
 
         db2 = get_session()
         try:
@@ -145,6 +172,12 @@ def _notify(db, user_id: int, ntype: str, title: str, body: str):
     from models import Notification
     db.add(Notification(user_id=user_id, type=ntype, title=title, body=body))
     db.commit()
+    # push to Telegram if linked (best-effort, never blocks the order flow)
+    try:
+        from telegram_bot import notify_user as _tg
+        _tg(user_id, body)
+    except Exception:
+        pass
 
 
 STATUS_MAP = {

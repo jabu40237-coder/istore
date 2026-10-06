@@ -17,19 +17,65 @@ from services import wallet as wallet_svc
 
 API = f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}"
 STR = {
-    "ku": {"welcome": "بخێر بهێن بۆ ئایستۆر 🏪\n/order — داواکاریا نوو\n/orders — داواکاریێن من\n/balance — باڵانس\n/services — خزمەتگوزاری\n/help — هاریکاری",
+    "ku": {"welcome": "بخێر بهێن بۆ ئایستۆر 🏪\n/order — داواکاریا نوو\n/orders — داواکاریێن من\n/balance — باڵانس\n/services — خزمەتگوزاری\n/support — پشتیڤانی\n/language — زمان\n/help — هاریکاری",
            "balance": "باڵانسا تە: ${b}",
-           "no_account": "هەژمار نەهاتە دیتن. لە مالپەڕێ خۆ تۆمار بکە پاش /start بنڤیسە.",
-           "help": "/start /services /order /orders /balance /language /help"},
-    "ar": {"welcome": "أهلاً بك في آي ستور 🏪",
+           "no_account": "هەژمار نەهاتە دیتن.\nل مالپەڕێ ب ئەکاونتا خۆ بچە ژوور: داشبۆرد ← پروفایل ← گرێدانا تێلێگرامێ، پاش /start بنڤیسە.",
+           "help": "/start /services /order /orders /balance /support /language /help",
+           "order_hint": "بۆ داواکاریێ سەرەدانا مالپەڕێ بکە:\n${url}/dashboard/order",
+           "support_hint": "بۆ پشتیڤانیێ سەرەدانا مالپەڕێ بکە:\n${url}/dashboard/support",
+           "lang_set": "زمان هاتە گوهارتن.",
+           "lang_ask": "زمانێ خۆ هەلبژێرە: ku / ar / en",
+           "no_orders": "هێشتا داواکاری نینن."},
+    "ar": {"welcome": "أهلاً بك في آي ستور 🏪\n/order — طلب جديد\n/orders — طلباتي\n/balance — الرصيد\n/services — الخدمات\n/support — الدعم\n/language — اللغة\n/help — مساعدة",
            "balance": "رصيدك: ${b}",
-           "no_account": "لم يتم العثور على حساب. سجّل في الموقع ثم أرسل /start.",
-           "help": "/start /services /order /orders /balance /language /help"},
-    "en": {"welcome": "Welcome to i Store 🏪",
+           "no_account": "لم يتم العثور على حساب.\nادخل لموقعك: لوحة التحكم ← الملف الشخصي ← ربط تليجرام، ثم أرسل /start.",
+           "help": "/start /services /order /orders /balance /support /language /help",
+           "order_hint": "للطلب زر الموقع:\n${url}/dashboard/order",
+           "support_hint": "للدعم زر الموقع:\n${url}/dashboard/support",
+           "lang_set": "تم تغيير اللغة.",
+           "lang_ask": "اختر لغتك: ku / ar / en",
+           "no_orders": "لا توجد طلبات بعد."},
+    "en": {"welcome": "Welcome to i Store 🏪\n/order — new order\n/orders — my orders\n/balance — balance\n/services — services\n/support — support\n/language — language\n/help — help",
            "balance": "Your balance: ${b}",
-           "no_account": "No account found. Register on the website then send /start.",
-           "help": "/start /services /order /orders /balance /language /help"},
+           "no_account": "No account found.\nLog in on the website: Dashboard → Profile → Link Telegram, then send /start.",
+           "help": "/start /services /order /orders /balance /support /language /help",
+           "order_hint": "To order, visit:\n${url}/dashboard/order",
+           "support_hint": "For support, visit:\n${url}/dashboard/support",
+           "lang_set": "Language changed.",
+           "lang_ask": "Choose your language: ku / ar / en",
+           "no_orders": "No orders yet."},
 }
+
+SITE_URL = ""  # optional: set SITE_URL env to advertise the web URL in bot hints
+
+
+def notify_telegram(tg_id: str, text: str) -> bool:
+    """Send a notification to a linked Telegram user. Returns success."""
+    if not Config.TELEGRAM_BOT_TOKEN or not tg_id:
+        return False
+    try:
+        r = httpx.post(f"{API}/sendMessage",
+                       json={"chat_id": int(tg_id), "text": text}, timeout=15)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def notify_user(user_id: int, text: str) -> bool:
+    """Notify a user via Telegram if they linked it and enabled notifications."""
+    db = get_session()
+    try:
+        from models import NotificationPreference
+        u = db.query(User).filter_by(id=user_id).first()
+        if not u or not u.telegram_id:
+            return False
+        pref = db.query(NotificationPreference).filter_by(user_id=user_id).first()
+        if pref and not pref.telegram_enabled:
+            return False
+        tg_id = u.telegram_id
+    finally:
+        db.close()
+    return notify_telegram(tg_id, text)
 
 
 def _t(lang, key, **kw):
@@ -80,6 +126,50 @@ def handle(msg):
         finally:
             db.close()
         send(chat_id, _t(lang, "balance", b=b))
+    elif text.startswith("/order"):
+        if not user:
+            send(chat_id, _t(lang, "no_account")); return
+        send(chat_id, _t(lang, "order_hint", url=SITE_URL or ""))
+    elif text.startswith("/support"):
+        if not user:
+            send(chat_id, _t(lang, "no_account")); return
+        send(chat_id, _t(lang, "support_hint", url=SITE_URL or ""))
+    elif text.startswith("/language"):
+        parts = text.split()
+        if len(parts) > 1 and parts[1] in ("ku", "ar", "en") and user:
+            db = get_session()
+            try:
+                u = db.query(User).filter_by(id=user.id).first()
+                u.language = parts[1]
+                db.commit()
+                lang = parts[1]
+            finally:
+                db.close()
+            send(chat_id, _t(lang, "lang_set"))
+        else:
+            send(chat_id, _t(lang, "lang_ask"))
+    elif text.startswith("/link"):
+        # /link <code> — code shown on website profile page
+        parts = text.split()
+        if len(parts) > 1:
+            from services import auth as auth_svc
+            uid = auth_svc.verify_telegram_code(parts[1].strip())
+            if uid:
+                db = get_session()
+                try:
+                    u = db.query(User).filter_by(id=uid).first()
+                    if u:
+                        u.telegram_id = str(tg_id)
+                        db.commit()
+                        user = u
+                        lang = u.language or "ku"
+                finally:
+                    db.close()
+                send(chat_id, _t(lang, "welcome"))
+            else:
+                send(chat_id, _t(lang, "no_account"))
+        else:
+            send(chat_id, _t(lang, "no_account"))
     elif text.startswith("/orders"):
         if not user:
             send(chat_id, _t(lang, "no_account")); return

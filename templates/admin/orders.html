@@ -21,6 +21,7 @@
     <td>
       {% if o.status != 'REFUNDED' %}
       <form method="post" action="{{ url_for('admin.order_refund', oid=o.id) }}" style="display:inline;">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
         <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('refund?')">{{ t('st_refunded') }}</button>
       </form>
       {% endif %}

@@ -1,0 +1,26 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1rem;">{{ t('support') }} — {{ t('tickets') }}</h2>
+<form class="searchbar" method="get" style="max-width:400px;">
+  <select class="select" name="status" onchange="this.form.submit()">
+    <option value="">{{ t('all') }}</option>
+    <option value="OPEN" {% if status=='OPEN' %}selected{% endif %}>OPEN</option>
+    <option value="WAITING_SUPPORT" {% if status=='WAITING_SUPPORT' %}selected{% endif %}>WAITING_SUPPORT</option>
+    <option value="WAITING_USER" {% if status=='WAITING_USER' %}selected{% endif %}>WAITING_USER</option>
+    <option value="CLOSED" {% if status=='CLOSED' %}selected{% endif %}>CLOSED</option>
+  </select>
+</form>
+<div class="table-wrap"><table class="tbl">
+  <tr><th>ID</th><th>{{ t('username') }}</th><th>{{ t('subject') }}</th><th>{{ t('status') }}</th><th>{{ t('date') }}</th><th></th></tr>
+  {% for tk in tickets %}
+  <tr>
+    <td>{{ tk.id }}</td>
+    <td>{{ users.get(tk.user_id).username if users.get(tk.user_id) else tk.user_id }}</td>
+    <td>{{ tk.subject }}</td>
+    <td><span class="status-pill st-{{ tk.status }}">{{ tk.status }}</span></td>
+    <td>{{ tk.updated_at.strftime('%Y-%m-%d %H:%M') if tk.updated_at }}</td>
+    <td><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.ticket_detail', tid=tk.id) }}">{{ t('view_details') }}</a></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

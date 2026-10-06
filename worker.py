@@ -73,11 +73,36 @@ def job_provider_health():
         db.close()
 
 
+def job_refill_status_sync():
+    """Poll pending refill statuses."""
+    from models import Refill
+    db = get_session()
+    try:
+        prov = db.query(Provider).filter_by(code=Config.PROVIDER_MODE).first()
+        if not prov:
+            return "no provider"
+        provider = _get_provider_for(prov)
+        pending = db.query(Refill).filter_by(status="PENDING").limit(50).all()
+        n = 0
+        for r in pending:
+            if not r.provider_refill_id:
+                continue
+            st = provider.get_refill_status(r.provider_refill_id)
+            if st:
+                r.status = st.upper()
+                n += 1
+        db.commit()
+        return f"refill sync: {n} updated"
+    finally:
+        db.close()
+
+
 SCHEDULE = [
     ("service_sync", job_service_sync, lambda: int(_setting(
         "sync_interval_minutes", str(Config.SYNC_INTERVAL_MINUTES)))),
     ("order_status_sync", job_order_status_sync,
      lambda: Config.ORDER_POLL_INTERVAL_MINUTES),
+    ("refill_status_sync", job_refill_status_sync, lambda: 15),
     ("provider_health", job_provider_health, lambda: 15),
 ]
 

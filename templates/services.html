@@ -1,38 +1,86 @@
 {% extends "base.html" %}
 {% block title %}{{ t('services') }} — {{ t('app_name') }}{% endblock %}
 {% block content %}
-<div class="page-head"><h1>{{ t('services') }}</h1></div>
+<div class="page-head"><h1>{% if favorites_page %}{{ t('favorites') }}{% else %}{{ t('services') }}{% endif %}</h1></div>
 <section class="section" style="padding-top:1.2rem;">
+  {% if not favorites_page %}
   <form class="searchbar" method="get">
     <input class="input" type="search" name="q" value="{{ q }}" placeholder="{{ t('search_services') }}">
     <select class="select" name="platform" onchange="this.form.submit()">
-      <option value="">{{ t('platform') }}: {{ t('all') }}</option>
+      <option value="">{{ t('platform_label') }}: {{ t('all') }}</option>
       {% for p in platforms %}
       <option value="{{ p.code }}" {% if platform==p.code %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
     </select>
+    <select class="select" name="category" onchange="this.form.submit()">
+      <option value="">{{ t('all_categories') }}</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {% if category==c.id|string %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <select class="select" name="sort" onchange="this.form.submit()">
+      <option value="recommended" {% if sort=='recommended' %}selected{% endif %}>{{ t('sort_recommended') }}</option>
+      <option value="price_asc" {% if sort=='price_asc' %}selected{% endif %}>{{ t('sort_price_asc') }}</option>
+      <option value="price_desc" {% if sort=='price_desc' %}selected{% endif %}>{{ t('sort_price_desc') }}</option>
+      <option value="newest" {% if sort=='newest' %}selected{% endif %}>{{ t('sort_newest') }}</option>
+    </select>
+    <label class="chk"><input type="checkbox" name="refill" value="1" {% if f_refill=='1' %}checked{% endif %} onchange="this.form.submit()"> {{ t('filter_refill') }}</label>
+    <label class="chk"><input type="checkbox" name="cancel" value="1" {% if f_cancel=='1' %}checked{% endif %} onchange="this.form.submit()"> {{ t('filter_cancel') }}</label>
     <button class="btn btn-primary" type="submit">{{ t('search') }}</button>
   </form>
+  {% endif %}
   {% if services %}
   <div class="grid grid-3">
     {% for s in services %}
     <div class="card svc-card">
-      <h3>{{ s.name }}</h3>
+      <div class="svc-top">
+        <h3>{{ s.name }}</h3>
+        {% if user %}
+        <button class="fav-btn sm {% if s.id in fav_ids %}on{% endif %}" data-sid="{{ s.id }}" aria-label="favorite">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s-7.5-4.9-10-9.5C.4 8 2.2 4.5 5.7 4.5c2 0 3.4 1.1 4.3 2.6.9-1.5 2.3-2.6 4.3-2.6 3.5 0 5.3 3.5 3.7 7-2.5 4.6-10 9.5-10 9.5z"/></svg>
+        </button>
+        {% endif %}
+      </div>
+      <div class="svc-id-sm">{{ t('svc_id', id=s.id) }}</div>
+      {% if s.is_featured or 'recommended' in (s.flags or []) %}
+      <div><span class="badge rec">{{ t('badge_recommended') }}</span></div>
+      {% endif %}
       <div class="svc-meta">
-        <span>{{ t('min') }}: {{ s.min_quantity }}</span>
-        <span>{{ t('max') }}: {{ s.max_quantity }}</span>
-        {% if s.supports_refill %}<span class="badge ok">{{ t('refill') }} ✓</span>{% endif %}
-        {% if s.supports_cancel %}<span class="badge mut">{{ t('cancel') }} ✓</span>{% endif %}
+        <span>{{ t('min') }}: {{ "{:,}".format(s.min_quantity) }}</span>
+        <span>{{ t('max') }}: {{ "{:,}".format(s.max_quantity) }}</span>
+      </div>
+      <div class="svc-meta">
+        {% if s.supports_refill %}<span class="badge ok">✓ {{ t('badge_refill') }}</span>{% endif %}
+        {% if s.supports_cancel %}<span class="badge ok">✓ {{ t('badge_cancel') }}</span>{% endif %}
+        <span class="ok-dot">● {{ t('available') }}</span>
       </div>
       <div class="svc-price">
-        <span class="p">{{ t('from_price') }} {{ fmt_money(s.selling_price_usd, 'USD') }}{{ t('per_1000') }}</span>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('order_now') }}</a>
+        <div>
+          <div class="from-lbl">{{ t('from_price') }}</div>
+          <span class="p">{{ fmt_price(s.selling_price_usd) }}<small>/1K</small></span>
+        </div>
+        <div class="svc-actions">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('view_details') }}</a>
+          {% if user %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('user.new_order', service=s.id) }}">{{ t('order_now') }}</a>
+          {% endif %}
+        </div>
       </div>
     </div>
     {% endfor %}
   </div>
   {% else %}
-  <div class="empty"><div class="ico">🔍</div><p>{{ t('no_orders') }}</p></div>
+  <div class="empty"><div class="ico">🔍</div><p>{% if favorites_page %}{{ t('no_favorites') }}{% else %}{{ t('no_orders') }}{% endif %}</p></div>
   {% endif %}
 </section>
+<script>
+document.querySelectorAll('.fav-btn').forEach(function(b){
+  b.addEventListener('click', function(e){
+    e.preventDefault();
+    fetch('/favorite/' + b.dataset.sid, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'csrf={{ session.get("csrf","") }}'}).then(function(r){return r.json();}).then(function(d){
+      if(d.ok) b.classList.toggle('on', d.favorite);
+    });
+  });
+});
+</script>
 {% endblock %}

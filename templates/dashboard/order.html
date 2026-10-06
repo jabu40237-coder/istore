@@ -8,32 +8,74 @@
     <select class="select" name="service" onchange="this.form.submit()" style="flex:1;">
       <option value="">— {{ t('service') }} —</option>
       {% for s in services %}
-      <option value="{{ s.id }}">{{ s.name }} ({{ fmt_money(s.selling_price_usd,'USD') }}{{ t('per_1000') }})</option>
+      <option value="{{ s.id }}">{{ s.name }} ({{ fmt_price(s.selling_price_usd) }}/1K)</option>
       {% endfor %}
     </select>
   </form>
   {% else %}
-  <form method="post">
+  <div class="ord-svc">
+    <div class="svc-id-sm">{{ t('svc_id', id=svc.id) }}</div>
+    <strong>{{ svc.name }}</strong>
+    <div class="svc-meta">
+      <span>{{ t('price_per_1000') }}: <strong>{{ fmt_price(svc.selling_price_usd) }}</strong></span>
+      <span>{{ t('min') }}: {{ "{:,}".format(svc.min_quantity) }}</span>
+      <span>{{ t('max') }}: {{ "{:,}".format(svc.max_quantity) }}</span>
+    </div>
+    <div style="margin-top:.4rem;">
+      {% if svc.supports_refill %}<span class="badge ok">{{ t('badge_refill') }}</span>{% endif %}
+      {% if svc.supports_cancel %}<span class="badge ok">{{ t('badge_cancel') }}</span>{% endif %}
+    </div>
+  </div>
+  <form method="post" id="order-form">
     <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
     <input type="hidden" name="service_id" value="{{ svc.id }}">
-    <div class="field"><label class="lbl">{{ t('service') }}</label>
-      <div class="card" style="padding:.7rem 1rem;">{{ svc.name }}</div></div>
-    <div class="field"><label class="lbl">{{ t('link') }}</label>
-      <input class="input" type="url" name="link" value="{{ link or '' }}" required dir="ltr"
-             placeholder="https://"></div>
-    <div class="field"><label class="lbl">{{ t('quantity') }} ({{ t('min') }} {{ svc.min_quantity }} — {{ t('max') }} {{ svc.max_quantity }})</label>
-      <input class="input" id="quantity" type="number" name="quantity"
-             value="{{ qty or svc.min_quantity }}" min="{{ svc.min_quantity }}" max="{{ svc.max_quantity }}"
-             data-service="{{ svc.id }}" data-per1000="{{ svc.selling_price_usd }}" required dir="ltr"></div>
-    {% if 'comment' in svc.service_type.lower() %}
-    <div class="field"><label class="lbl">{{ t('comments') }} ({{ t('estimated') }})</label>
-      <textarea class="input" name="x_comments" rows="4" dir="ltr" placeholder="one per line"></textarea></div>
-    {% endif %}
-    <div class="field"><label class="lbl">{{ t('total') }}</label>
-      <div id="live-price" class="card" style="padding:.7rem 1rem; font-weight:900; font-size:1.2rem;">$0.0000</div></div>
-    <button class="btn btn-primary" style="width:100%;" type="submit">{{ t('place_order') }}</button>
+    {% for f in schema %}
+    <div class="field">
+      <label class="lbl">{{ t(f.label_key) }}{% if f.required %} *{% endif %}</label>
+      {% if f.kind == 'textarea' %}
+      <textarea class="input" name="x_{{ f.param }}" rows="4" dir="ltr" {% if f.required %}required{% endif %} placeholder="one per line"></textarea>
+      {% elif f.kind == 'number' %}
+      <input class="input" type="number" name="{% if f.param=='quantity' %}quantity{% else %}x_{{ f.param }}{% endif %}"
+             id="{% if f.param=='quantity' %}o-qty{% endif %}"
+             {% if f.param=='quantity' %}min="{{ svc.min_quantity }}" max="{{ svc.max_quantity }}" value="{{ qty or svc.min_quantity }}"{% endif %}
+             dir="ltr" {% if f.required %}required{% endif %}>
+      {% else %}
+      <input class="input" type="{% if f.kind=='link' %}url{% else %}text{% endif %}"
+             name="{% if f.param=='link' %}link{% else %}x_{{ f.param }}{% endif %}"
+             value="{% if f.param=='link' %}{{ link or '' }}{% endif %}"
+             dir="ltr" placeholder="https://" {% if f.required %}required{% endif %}>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <div class="total-box">
+      <div>
+        <div class="from-lbl">{{ t('price_per_1000') }}: {{ fmt_price(svc.selling_price_usd) }}</div>
+        <span>{{ t('total_price') }}</span>
+      </div>
+      <strong id="o-total">{{ fmt_price(0) }}</strong>
+    </div>
+    <button class="btn btn-primary" style="width:100%; margin-top:.8rem;" type="submit">{{ t('place_order') }}</button>
   </form>
   <p style="margin-top:.8rem;"><a href="{{ url_for('user.new_order') }}" style="color:var(--text-muted); font-size:.85rem;">{{ t('back') }}</a></p>
   {% endif %}
 </div>
+<script>
+(function(){
+  var qty = document.getElementById('o-qty');
+  var total = document.getElementById('o-total');
+  if(!qty || !total) return;
+  var per1000 = parseFloat("{{ svc.selling_price_usd }}");
+  var rate = parseFloat("{{ rate }}");
+  var cur = "{{ currency }}";
+  function fmt(v){
+    if(cur === 'IQD') return Math.round(v*rate).toLocaleString() + ' IQD';
+    return '$' + v.toFixed(2);
+  }
+  function upd(){
+    var q = Math.max(0, parseInt(qty.value || 0, 10));
+    total.textContent = fmt(per1000 * q / 1000);
+  }
+  qty.addEventListener('input', upd); upd();
+})();
+</script>
 {% endblock %}

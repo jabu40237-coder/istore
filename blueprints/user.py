@@ -8,6 +8,7 @@ from models import Order, Service, Transaction, Notification, Ticket, TicketMess
 from services import auth as auth_svc
 from services import wallet as wallet_svc
 from services import orders as order_svc
+from services import forms as form_svc
 from providers.kd1s import get_provider
 from config import Config
 
@@ -64,28 +65,30 @@ def new_order():
     try:
         sid = request.args.get("service") or request.form.get("service_id")
         svc = db.query(Service).filter_by(id=sid, status="active").first() if sid else None
+        schema = form_svc.get_form_schema(svc) if svc else []
         if request.method == "POST" and svc:
+            # CSRF
+            if request.form.get("csrf") != __import__("flask").session.get("csrf"):
+                abort(400)
             link = request.form.get("link", "").strip()
             try:
                 qty = int(request.form.get("quantity", 0))
             except ValueError:
                 qty = 0
-            input_data = {k: v for k, v in request.form.items()
-                          if k.startswith("x_")}
-            # CSRF
-            if request.form.get("csrf") != __import__("flask").session.get("csrf"):
-                abort(400)
+            # schema-driven extra fields only (x_<param>)
+            input_data = form_svc.extract_input_data(request.form, svc)
             cur = g.user.currency or "USD"
             rate = _rate(cur)
             res = order_svc.create_order(g.user.id, svc.id, link, qty, input_data,
                                          _provider(), currency=cur, exchange_rate=rate)
             if res["ok"]:
                 return redirect(url_for("user.order_detail", oid=res["order_id"]))
-            return render_template("dashboard/order.html", svc=svc, error=res["error"],
-                                   link=link, qty=qty)
+            return render_template("dashboard/order.html", svc=svc, schema=schema,
+                                   error=res["error"], link=link, qty=qty)
         services = db.query(Service).filter_by(status="active").order_by(
             Service.sort_order).limit(300).all()
-        return render_template("dashboard/order.html", svc=svc, services=services)
+        return render_template("dashboard/order.html", svc=svc, schema=schema,
+                               services=services)
     finally:
         db.close()
 
@@ -156,11 +159,19 @@ def cancel(oid):
         svc = db.query(Service).filter_by(id=o.service_id).first()
         if not svc or not svc.supports_cancel or not o.provider_order_id:
             abort(400)
-        _provider().create_cancel([o.provider_order_id])
+        if o.status in ("CANCELED", "REFUNDED", "COMPLETED"):
+            return redirect(url_for("user.order_detail", oid=oid))
+        result = _provider().create_cancel([o.provider_order_id])
+        if isinstance(result, dict) and result.get("error"):
+            # provider cancel uncertain/failed — do NOT refund blindly
+            o.status = "RECONCILIATION_REQUIRED"
+            order_svc._log_event(db, o, "cancel_uncertain", o.status,
+                                 "RECONCILIATION_REQUIRED",
+                                 {"error": result.get("error")})
+            db.commit()
+            return redirect(url_for("user.order_detail", oid=oid))
         o.status = "CANCELED"
-        # refund remaining value conservatively: full charge minus nothing?
-        # Provider cancel may be partial; we refund full charge and let
-        # reconciliation handle differences (safe default: customer-friendly).
+        order_svc._log_event(db, o, "canceled", "PROCESSING", "CANCELED", {})
         wallet_svc.apply_transaction(
             db, g.user.id, "refund", o.customer_charge_usd,
             currency=o.currency, exchange_rate=o.exchange_rate,
@@ -263,6 +274,8 @@ def profile():
     try:
         u = db.query(User).filter_by(id=g.user.id).first()
         if request.method == "POST":
+            if request.form.get("csrf") != __import__("flask").session.get("csrf"):
+                abort(400)
             u.name = request.form.get("name", "").strip()
             u.phone = request.form.get("phone", "").strip()
             lang = request.form.get("language", "")
@@ -275,9 +288,60 @@ def profile():
                 u.currency = cur
             db.commit()
             return redirect(url_for("user.profile"))
-        return render_template("dashboard/profile.html", u=u)
+        from flask import session as fsession
+        from models import NotificationPreference
+        tg_code = fsession.pop("tg_code", None)
+        pref = db.query(NotificationPreference).filter_by(user_id=u.id).first()
+        return render_template("dashboard/profile.html", u=u, tg_code=tg_code,
+                               tg_pref=pref.telegram_enabled if pref else False)
     finally:
         db.close()
+
+
+@bp.route("/profile/telegram-code", methods=["POST"])
+@auth_svc.login_required
+def telegram_code():
+    if request.form.get("csrf") != __import__("flask").session.get("csrf"):
+        abort(400)
+    code = auth_svc.issue_telegram_code(g.user.id)
+    from flask import session as fsession
+    fsession["tg_code"] = code
+    return redirect(url_for("user.profile"))
+
+
+@bp.route("/profile/telegram-unlink", methods=["POST"])
+@auth_svc.login_required
+def telegram_unlink():
+    if request.form.get("csrf") != __import__("flask").session.get("csrf"):
+        abort(400)
+    db = get_session()
+    try:
+        u = db.query(User).filter_by(id=g.user.id).first()
+        if u:
+            u.telegram_id = ""
+            db.commit()
+    finally:
+        db.close()
+    return redirect(url_for("user.profile"))
+
+
+@bp.route("/profile/telegram-prefs", methods=["POST"])
+@auth_svc.login_required
+def telegram_prefs():
+    if request.form.get("csrf") != __import__("flask").session.get("csrf"):
+        abort(400)
+    from models import NotificationPreference
+    db = get_session()
+    try:
+        p = db.query(NotificationPreference).filter_by(user_id=g.user.id).first()
+        if not p:
+            p = NotificationPreference(user_id=g.user.id)
+            db.add(p)
+        p.telegram_enabled = bool(request.form.get("tg_notif"))
+        db.commit()
+    finally:
+        db.close()
+    return redirect(url_for("user.profile"))
 
 
 def _rate(currency: str) -> Decimal:

@@ -24,4 +24,32 @@
     <button class="btn btn-primary" type="submit">{{ t('save') }}</button>
   </form>
 </div>
+<div class="card" style="max-width:520px; margin-top:1.2rem;">
+  <h3 style="margin-bottom:.8rem;">Telegram</h3>
+  {% if u.telegram_id %}
+  <p class="ok-dot">● {{ t('tg_linked') }}</p>
+  <form method="post" action="{{ url_for('user.telegram_unlink') }}" style="margin-top:.6rem;">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <button class="btn btn-ghost btn-sm" type="submit">{{ t('tg_unlink') }}</button>
+  </form>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:.8rem;">{{ t('tg_link_hint') }}</p>
+  <form method="post" action="{{ url_for('user.telegram_code') }}">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <button class="btn btn-ghost btn-sm" type="submit">{{ t('tg_get_code') }}</button>
+  </form>
+  {% if tg_code %}
+  <div class="total-box" style="margin-top:.8rem;">
+    <span>{{ t('tg_your_code') }}</span>
+    <strong dir="ltr" style="letter-spacing:.2em;">{{ tg_code }}</strong>
+  </div>
+  <p style="color:var(--text-muted); font-size:.85rem; margin-top:.5rem;">{{ t('tg_code_hint') }}</p>
+  {% endif %}
+  {% endif %}
+  <form method="post" action="{{ url_for('user.telegram_prefs') }}" style="margin-top:1rem;">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <label class="chk"><input type="checkbox" name="tg_notif" {% if tg_pref %}checked{% endif %}> {{ t('tg_notif') }}</label>
+    <button class="btn btn-ghost btn-sm" type="submit" style="margin-inline-start:.6rem;">{{ t('save') }}</button>
+  </form>
+</div>
 {% endblock %}

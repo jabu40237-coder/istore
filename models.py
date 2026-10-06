@@ -284,3 +284,41 @@ class Job(Base):
     last_error = Column(Text, default="")
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now, onupdate=now)
+
+
+class SocialLink(Base):
+    """Admin-configurable official social accounts. Never hardcoded in templates."""
+    __tablename__ = "social_links"
+    id = Column(Integer, primary_key=True)
+    platform = Column(String(32), unique=True, nullable=False)  # telegram|instagram|tiktok|facebook|youtube|x|whatsapp|support
+    url = Column(String(512), default="")
+    is_enabled = Column(Boolean, default=False)
+    sort_order = Column(Integer, default=0)
+    updated_at = Column(DateTime, default=now, onupdate=now)
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=now)
+    __table_args__ = (UniqueConstraint("user_id", "service_id"),)
+
+
+class RecentlyViewed(Base):
+    __tablename__ = "recently_viewed"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=False, index=True)
+    viewed_at = Column(DateTime, default=now, onupdate=now)
+    __table_args__ = (UniqueConstraint("user_id", "service_id"),)
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_prefs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    order_updates = Column(Boolean, default=True)
+    telegram_enabled = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=now, onupdate=now)

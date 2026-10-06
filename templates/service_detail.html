@@ -1,33 +1,149 @@
 {% extends "base.html" %}
 {% block title %}{{ svc.name }} — {{ t('app_name') }}{% endblock %}
 {% block content %}
-<div class="page-head"><h1>{{ svc.name }}</h1></div>
-<section class="section" style="padding-top:1.2rem;">
-  <div class="grid" style="grid-template-columns: 2fr 1fr;">
-    <div class="card">
-      <h3 style="margin-bottom:.6rem;">{{ t('description') }}</h3>
-      <p style="color:var(--text-muted)">{{ svc.description or svc.name }}</p>
-      <h3 style="margin:1.4rem 0 .6rem;">{{ t('features') }}</h3>
-      <div class="svc-meta">
-        <span>{{ t('min') }}: <strong>{{ svc.min_quantity }}</strong></span>
-        <span>{{ t('max') }}: <strong>{{ svc.max_quantity }}</strong></span>
-        <span>{{ t('price') }}: <strong>{{ fmt_money(svc.selling_price_usd, 'USD') }}{{ t('per_1000') }}</strong></span>
+<div class="page-head">
+  <div class="svc-detail-head">
+    <div>
+      <div class="svc-id">{{ t('svc_id', id=svc.id) }}</div>
+      <h1>{{ svc.name }}</h1>
+      <div class="svc-tags">
+        {% if platform %}<span class="badge mut">{{ platform.name }}</span>{% endif %}
+        {% if category %}<span class="badge mut">{{ category.name }}</span>{% endif %}
+        <span class="badge mut">{{ svc.service_type or 'Default' }}</span>
       </div>
-      <div style="margin-top:.8rem; display:flex; gap:.5rem; flex-wrap:wrap;">
-        {% if svc.supports_refill %}<span class="badge ok">{{ t('refill_available') }}</span>{% endif %}
-        {% if svc.supports_cancel %}<span class="badge ok">{{ t('cancel_available') }}</span>{% endif %}
-        {% for f in (svc.flags or []) %}<span class="badge mut">{{ f }}</span>{% endfor %}
+      <div class="svc-badges">
+        {% if svc.supports_refill %}<span class="badge ok">{{ t('badge_refill') }}</span>{% endif %}
+        {% if svc.supports_cancel %}<span class="badge ok">{{ t('badge_cancel') }}</span>{% endif %}
+        {% if 'fast' in (svc.flags or []) %}<span class="badge fast">{{ t('badge_fast') }}</span>{% endif %}
+        {% if 'popular' in (svc.flags or []) %}<span class="badge pop">{{ t('badge_popular') }}</span>{% endif %}
+        {% if 'new' in (svc.flags or []) %}<span class="badge new">{{ t('badge_new') }}</span>{% endif %}
+        {% if 'recommended' in (svc.flags or []) or svc.is_featured %}<span class="badge rec">{{ t('badge_recommended') }}</span>{% endif %}
       </div>
     </div>
-    <div class="card" style="align-self:start;">
-      <div class="field"><label class="lbl">{{ t('price') }} {{ t('per_1000') }}</label>
-        <div style="font-size:1.6rem; font-weight:900;">{{ fmt_money(svc.selling_price_usd, 'USD') }}</div></div>
-      {% if user %}
-      <a class="btn btn-primary" style="width:100%;" href="{{ url_for('user.new_order', service=svc.id) }}">{{ t('order_now') }}</a>
-      {% else %}
-      <a class="btn btn-primary" style="width:100%;" href="{{ url_for('login', next='/dashboard/order?service=' ~ svc.id) }}">{{ t('login') }}</a>
-      {% endif %}
+    {% if user %}
+    <button class="fav-btn {% if is_fav %}on{% endif %}" data-sid="{{ svc.id }}" aria-label="favorite">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 21s-7.5-4.9-10-9.5C.4 8 2.2 4.5 5.7 4.5c2 0 3.4 1.1 4.3 2.6.9-1.5 2.3-2.6 4.3-2.6 3.5 0 5.3 3.5 3.7 7-2.5 4.6-10 9.5-10 9.5z"/></svg>
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<section class="section svc-detail">
+  <div class="detail-grid">
+    <div class="detail-main">
+      <div class="card detail-sec">
+        <h3>{{ t('overview') }}</h3>
+        <p>{{ svc.description or svc.name }}</p>
+        <div class="kv">
+          <div><span>{{ t('platform_label') }}</span><strong>{{ platform.name if platform else '—' }}</strong></div>
+          <div><span>{{ t('category_label') }}</span><strong>{{ category.name if category else '—' }}</strong></div>
+          <div><span>{{ t('service_type_label') }}</span><strong>{{ svc.service_type or 'Default' }}</strong></div>
+          <div><span>{{ t('status_label') }}</span><strong class="ok-dot">● {{ t('available') }}</strong></div>
+        </div>
+      </div>
+
+      <div class="card detail-sec">
+        <h3>{{ t('pricing_section') }}</h3>
+        <div class="price-line">
+          <span>{{ t('price_per_1000') }}</span>
+          <strong>{{ fmt_price(svc.selling_price_usd) }}</strong>
+        </div>
+        <div class="kv">
+          <div><span>{{ t('min') }}</span><strong>{{ "{:,}".format(svc.min_quantity) }}</strong></div>
+          <div><span>{{ t('max') }}</span><strong>{{ "{:,}".format(svc.max_quantity) }}</strong></div>
+        </div>
+      </div>
+
+      <div class="card detail-sec">
+        <h3>{{ t('features_section') }}</h3>
+        <ul class="feat-list">
+          <li class="{{ 'yes' if svc.supports_refill else 'no' }}">{{ t('badge_refill') }}: {{ t('available') if svc.supports_refill else t('not_available') }}</li>
+          <li class="{{ 'yes' if svc.supports_cancel else 'no' }}">{{ t('badge_cancel') }}: {{ t('available') if svc.supports_cancel else t('not_available') }}</li>
+        </ul>
+      </div>
+
+      <div class="card detail-sec">
+        <h3>{{ t('order_requirements') }}</h3>
+        <ul class="feat-list">
+          {% for f in schema %}
+          <li class="yes">{{ t(f.label_key) }}{% if f.required %} *{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail-side">
+      <div class="card order-card">
+        <h3>{{ t('order_form') }}</h3>
+        {% if user %}
+        <form method="post" action="{{ url_for('user.new_order') }}" id="detail-order-form">
+          <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+          <input type="hidden" name="service_id" value="{{ svc.id }}">
+          {% for f in schema %}
+          <div class="field">
+            <label class="lbl">{{ t(f.label_key) }}{% if f.required %} *{% endif %}</label>
+            {% if f.kind == 'textarea' %}
+            <textarea class="input" name="x_{{ f.param }}" rows="4" dir="ltr" {% if f.required %}required{% endif %}></textarea>
+            {% elif f.kind == 'number' %}
+            <input class="input" type="number" name="{% if f.param=='quantity' %}quantity{% else %}x_{{ f.param }}{% endif %}"
+                   id="{% if f.param=='quantity' %}d-qty{% endif %}"
+                   {% if f.param=='quantity' %}min="{{ svc.min_quantity }}" max="{{ svc.max_quantity }}" value="{{ svc.min_quantity }}"{% endif %}
+                   dir="ltr" {% if f.required %}required{% endif %}>
+            {% else %}
+            <input class="input" type="{% if f.kind=='link' %}url{% else %}text{% endif %}" name="{% if f.param=='link' %}link{% else %}x_{{ f.param }}{% endif %}"
+                   dir="ltr" placeholder="https://" {% if f.required %}required{% endif %}>
+            {% endif %}
+          </div>
+          {% endfor %}
+          <div class="total-box">
+            <span>{{ t('total_price') }}</span>
+            <strong id="d-total">{{ fmt_price(0) }}</strong>
+          </div>
+          <div class="cur-switch">
+            <form method="post" action="{{ url_for('set_currency') }}" style="display:inline;">
+              <input type="hidden" name="currency" value="USD">
+              <button class="cur-btn {% if currency=='USD' %}active{% endif %}" type="submit">USD</button>
+            </form>
+            <form method="post" action="{{ url_for('set_currency') }}" style="display:inline;">
+              <input type="hidden" name="currency" value="IQD">
+              <button class="cur-btn {% if currency=='IQD' %}active{% endif %}" type="submit">IQD</button>
+            </form>
+          </div>
+          <button class="btn btn-primary" style="width:100%; margin-top:.8rem;" type="submit">{{ t('order_now') }}</button>
+        </form>
+        {% else %}
+        <p style="color:var(--text-muted); margin-bottom:1rem;">{{ t('login_to_order') }}</p>
+        <a class="btn btn-primary" style="width:100%;" href="{{ url_for('login', next='/service/' ~ svc.id) }}">{{ t('login') }}</a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </section>
+
+<script>
+(function(){
+  var qty = document.getElementById('d-qty');
+  var total = document.getElementById('d-total');
+  if(!qty || !total) return;
+  var per1000 = parseFloat("{{ svc.selling_price_usd }}");
+  var rate = parseFloat("{{ rate }}");
+  var cur = "{{ currency }}";
+  function fmt(v){
+    if(cur === 'IQD') return Math.round(v*rate).toLocaleString() + ' IQD';
+    return '$' + (v).toFixed(2);
+  }
+  function upd(){
+    var q = parseInt(qty.value || 0, 10);
+    total.textContent = fmt(per1000 * q / 1000);
+  }
+  qty.addEventListener('input', upd); upd();
+})();
+document.querySelectorAll('.fav-btn').forEach(function(b){
+  b.addEventListener('click', function(){
+    fetch('/favorite/' + b.dataset.sid, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'csrf={{ session.get("csrf","") }}'}).then(function(r){return r.json();}).then(function(d){
+      if(d.ok) b.classList.toggle('on', d.favorite);
+    });
+  });
+});
+</script>
 {% endblock %}
