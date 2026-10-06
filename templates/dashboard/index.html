@@ -1,0 +1,28 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<div class="grid grid-4" style="margin-bottom:1.2rem;">
+  <div class="card stat-card"><div class="num">{{ fmt_money(balance, 'USD') }}</div><div class="lbl2">{{ t('current_balance') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ total }}</div><div class="lbl2">{{ t('my_orders') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ completed }}</div><div class="lbl2">{{ t('st_completed') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ processing }}</div><div class="lbl2">{{ t('st_processing') }}</div></div>
+</div>
+<div class="card">
+  <h3 style="margin-bottom:1rem;">{{ t('my_orders') }}</h3>
+  {% if recent %}
+  <div class="table-wrap"><table class="tbl">
+    <tr><th>#</th><th>{{ t('service') }}</th><th>{{ t('quantity') }}</th><th>{{ t('charge') }}</th><th>{{ t('status') }}</th></tr>
+    {% for o in recent %}
+    <tr>
+      <td><a href="{{ url_for('user.order_detail', oid=o.id) }}" style="color:var(--primary);">#{{ o.id }}</a></td>
+      <td>{{ svc_names.get(o.service_id, '#' ~ o.service_id) }}</td><td>{{ o.quantity }}</td>
+      <td>{{ fmt_money(o.customer_charge_usd, o.currency) }}</td>
+      <td><span class="status-pill st-{{ o.status }}">{{ t('st_' ~ o.status.lower()) }}</span></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+  <div class="empty"><div class="ico">📦</div><p>{{ t('no_orders') }}</p>
+  <a class="btn btn-primary btn-sm" href="{{ url_for('user.new_order') }}">{{ t('new_order') }}</a></div>
+  {% endif %}
+</div>
+{% endblock %}

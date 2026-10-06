@@ -1,0 +1,31 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1rem;">{{ t('my_orders') }}</h2>
+<form class="searchbar" method="get">
+  <select class="select" name="status" onchange="this.form.submit()">
+    <option value="">{{ t('status') }}: {{ t('all') }}</option>
+    {% for s in ['PENDING','PROCESSING','COMPLETED','PARTIAL','CANCELED','FAILED','REFUNDED'] %}
+    <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ t('st_' ~ s.lower()) }}</option>
+    {% endfor %}
+  </select>
+</form>
+{% if orders %}
+<div class="table-wrap"><table class="tbl">
+  <tr><th>#</th><th>{{ t('service') }}</th><th>{{ t('quantity') }}</th><th>{{ t('charge') }}</th><th>{{ t('status') }}</th><th>{{ t('date') }}</th></tr>
+  {% for o in orders %}
+  <tr>
+    <td><a href="{{ url_for('user.order_detail', oid=o.id) }}" style="color:var(--primary);">#{{ o.id }}</a></td>
+    <td style="white-space:normal; min-width:180px;">{{ svc_names.get(o.service_id, '#' ~ o.service_id) }}</td>
+    <td>{{ o.quantity }}</td>
+    <td>{{ fmt_money(o.customer_charge_usd, o.currency) }}</td>
+    <td><span class="status-pill st-{{ o.status }}">{{ t('st_' ~ o.status.lower()) }}</span></td>
+    <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty"><div class="ico">📦</div><p>{{ t('no_orders') }}</p>
+<p style="margin-bottom:1rem;">{{ t('no_orders_desc') }}</p>
+<a class="btn btn-primary btn-sm" href="{{ url_for('user.new_order') }}">{{ t('new_order') }}</a></div>
+{% endif %}
+{% endblock %}

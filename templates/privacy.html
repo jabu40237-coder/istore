@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ t('privacy') if 'privacy' in ['about','faq','contact','terms','privacy'] else 'privacy' }} — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('privacy') }}</h1></div>
+<div class="prose"><div class="card"><p>{{ t('subheading') }}</p><p style="margin-top:1rem;">{{ t('app_name') }} | {{ t('app_name_latin') }} — {{ t('footer_desc') }}.</p></div></div>
+{% endblock %}

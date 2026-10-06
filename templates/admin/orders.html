@@ -1,0 +1,31 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1rem;">{{ t('my_orders') }}</h2>
+<form class="searchbar" method="get">
+  <select class="select" name="status" onchange="this.form.submit()">
+    <option value="">{{ t('status') }}: {{ t('all') }}</option>
+    {% for s in ['PENDING','PROCESSING','COMPLETED','PARTIAL','CANCELED','FAILED','REFUNDED'] %}
+    <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+</form>
+<div class="table-wrap"><table class="tbl">
+  <tr><th>#</th><th>{{ t('username') }}</th><th>{{ t('service') }}</th><th>{{ t('quantity') }}</th>
+      <th>{{ t('charge') }}</th><th>{{ t('profit') }}</th><th>{{ t('status') }}</th><th></th></tr>
+  {% for o in orders %}
+  <tr>
+    <td>#{{ o.id }}</td><td>{{ o.user_id }}</td><td>{{ o.service_id }}</td>
+    <td>{{ o.quantity }}</td><td>${{ o.customer_charge_usd }}</td>
+    <td style="color:var(--success);">${{ o.profit_usd }}</td>
+    <td><span class="status-pill st-{{ o.status }}">{{ o.status }}</span></td>
+    <td>
+      {% if o.status != 'REFUNDED' %}
+      <form method="post" action="{{ url_for('admin.order_refund', oid=o.id) }}" style="display:inline;">
+        <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('refund?')">{{ t('st_refunded') }}</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

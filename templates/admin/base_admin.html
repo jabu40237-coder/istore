@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dash">
+  <aside class="side card">
+    <a href="{{ url_for('admin.dashboard') }}" class="{% if request.endpoint=='admin.dashboard' %}active{% endif %}">📊 {{ t('dashboard') }}</a>
+    <a href="{{ url_for('admin.orders') }}" class="{% if request.endpoint=='admin.orders' %}active{% endif %}">📦 {{ t('my_orders') }}</a>
+    <a href="{{ url_for('admin.services') }}" class="{% if request.endpoint in ['admin.services','admin.service_edit'] %}active{% endif %}">🛠️ {{ t('services') }}</a>
+    <a href="{{ url_for('admin.users') }}" class="{% if request.endpoint in ['admin.users'] %}active{% endif %}">👥 {{ t('users') }}</a>
+    <a href="{{ url_for('admin.providers') }}" class="{% if request.endpoint=='admin.providers' %}active{% endif %}">🔌 {{ t('provider') }}</a>
+    <a href="{{ url_for('admin.pricing') }}" class="{% if request.endpoint=='admin.pricing' %}active{% endif %}">💲 {{ t('price') }}</a>
+    <a href="{{ url_for('admin.settings') }}" class="{% if request.endpoint=='admin.settings' %}active{% endif %}">⚙️ {{ t('settings') }}</a>
+  </aside>
+  <div class="dash-main">{% block dash %}{% endblock %}</div>
+</div>
+{% endblock %}

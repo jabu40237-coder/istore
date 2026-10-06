@@ -1,0 +1,21 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1rem;">{{ t('price') }} — rules</h2>
+<div class="card" style="max-width:520px; margin-bottom:1.2rem;">
+  <form method="post">
+    <div class="field"><label class="lbl">Scope</label>
+      <select class="select" name="scope"><option value="global">global</option></select></div>
+    <div class="field"><label class="lbl">Markup %</label>
+      <input class="input" name="markup_percent" dir="ltr" placeholder="30"></div>
+    <button class="btn btn-primary btn-sm" type="submit">{{ t('save') }}</button>
+  </form>
+</div>
+<div class="table-wrap"><table class="tbl">
+  <tr><th>Scope</th><th>Markup %</th><th>Fixed $</th><th>{{ t('status') }}</th></tr>
+  {% for r in rules %}
+  <tr><td>{{ r.scope }}{{ ':' ~ r.scope_id if r.scope_id }}</td>
+      <td>{{ r.markup_percent }}%</td><td>${{ r.markup_fixed_usd }}</td>
+      <td>{{ 'active' if r.is_active else 'off' }}</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

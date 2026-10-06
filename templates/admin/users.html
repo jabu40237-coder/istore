@@ -1,0 +1,21 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1rem;">{{ t('users') }}</h2>
+<div class="table-wrap"><table class="tbl">
+  <tr><th>ID</th><th>{{ t('username') }}</th><th>{{ t('email') }}</th><th>{{ t('balance') }}</th><th>{{ t('date') }}</th><th>{{ t('actions') }}</th></tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.id }}</td><td>{{ u.username }}</td><td dir="ltr">{{ u.email }}</td>
+    <td>{{ u.wallet.balance_usd if u.wallet else 0 }}</td>
+    <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at }}</td>
+    <td>
+      <form method="post" action="{{ url_for('admin.user_adjust', uid=u.id) }}" style="display:flex; gap:.3rem;">
+        <input class="input" name="amount" placeholder="±$" dir="ltr" style="width:90px; padding:.3rem .6rem;">
+        <input class="input" name="reason" placeholder="reason" style="width:130px; padding:.3rem .6rem;">
+        <button class="btn btn-ghost btn-sm" type="submit">{{ t('save') }}</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

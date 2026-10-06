@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ t('services') }} — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('services') }}</h1></div>
+<section class="section" style="padding-top:1.2rem;">
+  <form class="searchbar" method="get">
+    <input class="input" type="search" name="q" value="{{ q }}" placeholder="{{ t('search_services') }}">
+    <select class="select" name="platform" onchange="this.form.submit()">
+      <option value="">{{ t('platform') }}: {{ t('all') }}</option>
+      {% for p in platforms %}
+      <option value="{{ p.code }}" {% if platform==p.code %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">{{ t('search') }}</button>
+  </form>
+  {% if services %}
+  <div class="grid grid-3">
+    {% for s in services %}
+    <div class="card svc-card">
+      <h3>{{ s.name }}</h3>
+      <div class="svc-meta">
+        <span>{{ t('min') }}: {{ s.min_quantity }}</span>
+        <span>{{ t('max') }}: {{ s.max_quantity }}</span>
+        {% if s.supports_refill %}<span class="badge ok">{{ t('refill') }} ✓</span>{% endif %}
+        {% if s.supports_cancel %}<span class="badge mut">{{ t('cancel') }} ✓</span>{% endif %}
+      </div>
+      <div class="svc-price">
+        <span class="p">{{ t('from_price') }} {{ fmt_money(s.selling_price_usd, 'USD') }}{{ t('per_1000') }}</span>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('order_now') }}</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><div class="ico">🔍</div><p>{{ t('no_orders') }}</p></div>
+  {% endif %}
+</section>
+{% endblock %}

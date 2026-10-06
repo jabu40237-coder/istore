@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ t('register') }} — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1>{{ t('register') }}</h1>
+    {% if error %}<div class="alert err">{{ t(error) }}</div>{% endif %}
+    <form method="post">
+      <div class="field"><label class="lbl">{{ t('name') }}</label>
+        <input class="input" type="text" name="name"></div>
+      <div class="field"><label class="lbl">{{ t('username') }}</label>
+        <input class="input" type="text" name="username" required dir="ltr"></div>
+      <div class="field"><label class="lbl">{{ t('email') }}</label>
+        <input class="input" type="email" name="email" required dir="ltr"></div>
+      <div class="field"><label class="lbl">{{ t('password') }}</label>
+        <input class="input" type="password" name="password" required dir="ltr" minlength="6"></div>
+      <div class="field"><label class="lbl">{{ t('confirm_password') }}</label>
+        <input class="input" type="password" name="password2" required dir="ltr"></div>
+      <button class="btn btn-primary" style="width:100%;" type="submit">{{ t('register') }}</button>
+    </form>
+    <p style="text-align:center; margin-top:1rem; color:var(--text-muted); font-size:.9rem;">
+      <a href="{{ url_for('login') }}" style="color:var(--primary);">{{ t('login') }}</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

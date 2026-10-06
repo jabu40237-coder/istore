@@ -1,0 +1,36 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<h2 style="margin-bottom:1.2rem;">{{ t('admin_panel') }}</h2>
+<div class="grid grid-4" style="margin-bottom:1.2rem;">
+  <div class="card stat-card"><div class="num">{{ stats.users }}</div><div class="lbl2">{{ t('users') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ stats.orders }}</div><div class="lbl2">{{ t('my_orders') }}</div></div>
+  <div class="card stat-card"><div class="num">${{ stats.revenue }}</div><div class="lbl2">{{ t('revenue') }}</div></div>
+  <div class="card stat-card"><div class="num" style="color:var(--success);">${{ stats.profit }}</div><div class="lbl2">{{ t('profit') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ stats.pending }}</div><div class="lbl2">{{ t('st_processing') }}</div></div>
+  <div class="card stat-card"><div class="num" style="color:var(--danger);">{{ stats.failed }}</div><div class="lbl2">{{ t('st_failed') }}</div></div>
+  <div class="card stat-card"><div class="num">${{ stats.costs }}</div><div class="lbl2">{{ t('costs') }}</div></div>
+  <div class="card stat-card"><div class="num">{{ stats.services }}</div><div class="lbl2">{{ t('services') }}</div></div>
+</div>
+<div class="grid" style="grid-template-columns:2fr 1fr;">
+  <div class="card">
+    <h3 style="margin-bottom:1rem;">{{ t('my_orders') }} (14 {{ t('date') }})</h3>
+    {% if daily %}
+    <div style="display:flex; align-items:flex-end; gap:4px; height:120px;">
+      {% for d in daily %}
+      {% set h = (d.c / (daily|map(attribute='c')|max) * 100) if (daily|map(attribute='c')|max) > 0 else 0 %}
+      <div title="{{ d.d }}: {{ d.c }}" style="flex:1; background:linear-gradient(180deg,#8e7bff,#6c5ce7); border-radius:4px 4px 0 0; height:{{ h }}%; min-height:4px;"></div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty"><p>—</p></div>{% endif %}
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom:1rem;">{{ t('provider') }}</h3>
+    {% for p in providers %}
+    <div style="display:flex; justify-content:space-between; padding:.5rem 0; border-bottom:1px solid var(--border);">
+      <span>{{ p.code }}</span>
+      <span class="badge {{ 'ok' if p.is_active else 'mut' }}">{{ t('online') if p.is_active else t('offline') }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

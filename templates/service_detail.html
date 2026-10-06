@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ svc.name }} — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ svc.name }}</h1></div>
+<section class="section" style="padding-top:1.2rem;">
+  <div class="grid" style="grid-template-columns: 2fr 1fr;">
+    <div class="card">
+      <h3 style="margin-bottom:.6rem;">{{ t('description') }}</h3>
+      <p style="color:var(--text-muted)">{{ svc.description or svc.name }}</p>
+      <h3 style="margin:1.4rem 0 .6rem;">{{ t('features') }}</h3>
+      <div class="svc-meta">
+        <span>{{ t('min') }}: <strong>{{ svc.min_quantity }}</strong></span>
+        <span>{{ t('max') }}: <strong>{{ svc.max_quantity }}</strong></span>
+        <span>{{ t('price') }}: <strong>{{ fmt_money(svc.selling_price_usd, 'USD') }}{{ t('per_1000') }}</strong></span>
+      </div>
+      <div style="margin-top:.8rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+        {% if svc.supports_refill %}<span class="badge ok">{{ t('refill_available') }}</span>{% endif %}
+        {% if svc.supports_cancel %}<span class="badge ok">{{ t('cancel_available') }}</span>{% endif %}
+        {% for f in (svc.flags or []) %}<span class="badge mut">{{ f }}</span>{% endfor %}
+      </div>
+    </div>
+    <div class="card" style="align-self:start;">
+      <div class="field"><label class="lbl">{{ t('price') }} {{ t('per_1000') }}</label>
+        <div style="font-size:1.6rem; font-weight:900;">{{ fmt_money(svc.selling_price_usd, 'USD') }}</div></div>
+      {% if user %}
+      <a class="btn btn-primary" style="width:100%;" href="{{ url_for('user.new_order', service=svc.id) }}">{{ t('order_now') }}</a>
+      {% else %}
+      <a class="btn btn-primary" style="width:100%;" href="{{ url_for('login', next='/dashboard/order?service=' ~ svc.id) }}">{{ t('login') }}</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

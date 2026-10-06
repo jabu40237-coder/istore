@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if rtl else 'ltr' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ t('app_name') }} | {{ t('app_name_latin') }}{% endblock %}</title>
+<meta name="description" content="{{ t('subheading') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="{{ url_for('index') }}">
+    <span class="brand-mark">iS</span>
+    <span class="brand-name">{{ t('app_name') }}</span>
+  </a>
+  <nav class="nav-links">
+    <a href="{{ url_for('index') }}">{{ t('home') }}</a>
+    <a href="{{ url_for('services') }}">{{ t('services') }}</a>
+    <a href="{{ url_for('page_about') }}">{{ t('about') }}</a>
+    <a href="{{ url_for('page_faq') }}">{{ t('faq') }}</a>
+    <a href="{{ url_for('page_contact') }}">{{ t('contact') }}</a>
+  </nav>
+  <div class="nav-actions">
+    <div class="lang-switch">
+      <a href="?lang=ku" class="{% if lang=='ku' %}active{% endif %}">KU</a>
+      <a href="?lang=ar" class="{% if lang=='ar' %}active{% endif %}">AR</a>
+      <a href="?lang=en" class="{% if lang=='en' %}active{% endif %}">EN</a>
+    </div>
+    {% if user %}
+      <a class="btn btn-ghost" href="{{ url_for('user.dashboard') }}">{{ t('dashboard') }}</a>
+      <a class="btn btn-ghost" href="{{ url_for('logout') }}">{{ t('logout') }}</a>
+    {% else %}
+      <a class="btn btn-ghost" href="{{ url_for('login') }}">{{ t('login') }}</a>
+      <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('register') }}</a>
+    {% endif %}
+  </div>
+  <button class="nav-toggle" aria-label="menu">☰</button>
+</header>
+
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark">iS</span>
+      <div>
+        <strong>{{ t('app_name') }} | {{ t('app_name_latin') }}</strong>
+        <p>{{ t('footer_desc') }}</p>
+      </div>
+    </div>
+    <nav class="footer-links">
+      <a href="{{ url_for('page_terms') }}">{{ t('terms') }}</a>
+      <a href="{{ url_for('page_privacy') }}">{{ t('privacy') }}</a>
+      <a href="{{ url_for('page_contact') }}">{{ t('contact') }}</a>
+    </nav>
+    <p class="copy">© 2026 {{ t('app_name') }} — {{ t('rights') }}</p>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

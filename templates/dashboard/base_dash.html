@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dash">
+  <aside class="side card">
+    <a href="{{ url_for('user.dashboard') }}" class="{% if request.endpoint=='user.dashboard' %}active{% endif %}">📊 {{ t('dashboard') }}</a>
+    <a href="{{ url_for('user.new_order') }}" class="{% if request.endpoint=='user.new_order' %}active{% endif %}">➕ {{ t('new_order') }}</a>
+    <a href="{{ url_for('user.orders') }}" class="{% if request.endpoint in ['user.orders','user.order_detail'] %}active{% endif %}">📦 {{ t('my_orders') }}</a>
+    <a href="{{ url_for('user.wallet') }}" class="{% if request.endpoint=='user.wallet' %}active{% endif %}">💰 {{ t('wallet') }}</a>
+    <a href="{{ url_for('user.notifications') }}" class="{% if request.endpoint=='user.notifications' %}active{% endif %}">🔔 {{ t('notifications') }}</a>
+    <a href="{{ url_for('user.support') }}" class="{% if request.endpoint in ['user.support','user.ticket_detail'] %}active{% endif %}">🎧 {{ t('support') }}</a>
+    <a href="{{ url_for('user.profile') }}" class="{% if request.endpoint=='user.profile' %}active{% endif %}">👤 {{ t('profile') }}</a>
+  </aside>
+  <div class="dash-main">
+    {% block dash %}{% endblock %}
+  </div>
+</div>
+<nav class="bottom-nav">
+  <a href="{{ url_for('user.dashboard') }}" class="{% if request.endpoint=='user.dashboard' %}active{% endif %}">📊</a>
+  <a href="{{ url_for('user.new_order') }}" class="{% if request.endpoint=='user.new_order' %}active{% endif %}">➕</a>
+  <a href="{{ url_for('user.orders') }}" class="{% if request.endpoint=='user.orders' %}active{% endif %}">📦</a>
+  <a href="{{ url_for('user.wallet') }}" class="{% if request.endpoint=='user.wallet' %}active{% endif %}">💰</a>
+  <a href="{{ url_for('user.profile') }}" class="{% if request.endpoint=='user.profile' %}active{% endif %}">👤</a>
+</nav>
+{% endblock %}

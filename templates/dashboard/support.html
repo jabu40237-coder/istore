@@ -1,0 +1,27 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<div class="grid" style="grid-template-columns:1fr 1fr; gap:1.2rem;">
+  <div class="card">
+    <h3 style="margin-bottom:1rem;">{{ t('create_ticket') }}</h3>
+    <form method="post">
+      <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+      <div class="field"><label class="lbl">{{ t('subject') }}</label>
+        <input class="input" name="subject" required></div>
+      <div class="field"><label class="lbl">{{ t('message') }}</label>
+        <textarea class="input" name="message" rows="5" required></textarea></div>
+      <button class="btn btn-primary" type="submit">{{ t('create_ticket') }}</button>
+    </form>
+  </div>
+  <div>
+    <h3 style="margin-bottom:1rem;">{{ t('support') }}</h3>
+    {% for tk in tickets %}
+    <a href="{{ url_for('user.ticket_detail', tid=tk.id) }}" class="card" style="display:block; padding:.9rem 1.1rem; margin-bottom:.6rem;">
+      <strong>#{{ tk.id }} — {{ tk.subject }}</strong><br>
+      <span class="status-pill st-{{ tk.status }}">{{ t(tk.status.lower()) if tk.status.lower() in ['open','closed','resolved'] else tk.status }}</span>
+    </a>
+    {% else %}
+    <div class="empty"><div class="ico">🎧</div><p>{{ t('no_orders') }}</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

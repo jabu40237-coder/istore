@@ -1,0 +1,31 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<div class="card" style="max-width:640px;">
+  <h2 style="margin-bottom:1rem;">{{ t('order_id') }} #{{ order.id }}</h2>
+  <div class="grid" style="grid-template-columns:1fr 1fr; gap:.8rem;">
+    <div><label class="lbl">{{ t('status') }}</label>
+      <span class="status-pill st-{{ order.status }}">{{ t('st_' ~ order.status.lower()) }}</span></div>
+    <div><label class="lbl">{{ t('quantity') }}</label><div>{{ order.quantity }}</div></div>
+    <div><label class="lbl">{{ t('charge') }}</label><div>{{ fmt_money(order.customer_charge_usd, order.currency) }}</div></div>
+    <div><label class="lbl">{{ t('date') }}</label><div>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at }}</div></div>
+    <div style="grid-column:1/-1;"><label class="lbl">{{ t('link') }}</label>
+      <div style="overflow:hidden; text-overflow:ellipsis;" dir="ltr">{{ order.link }}</div></div>
+  </div>
+  <div style="display:flex; gap:.6rem; margin-top:1.4rem; flex-wrap:wrap;">
+    {% if svc and svc.supports_refill and order.provider_order_id %}
+    <form method="post" action="{{ url_for('user.refill', oid=order.id) }}">
+      <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+      <button class="btn btn-ghost btn-sm" type="submit">{{ t('request_refill') }}</button>
+    </form>
+    {% endif %}
+    {% if svc and svc.supports_cancel and order.provider_order_id and order.status in ['PENDING','PROCESSING'] %}
+    <form method="post" action="{{ url_for('user.cancel', oid=order.id) }}"
+          onsubmit="return confirm('{{ t('cancel_order') }}?')">
+      <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+      <button class="btn btn-danger btn-sm" type="submit">{{ t('cancel_order') }}</button>
+    </form>
+    {% endif %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('user.support') }}">{{ t('contact_support') }}</a>
+  </div>
+</div>
+{% endblock %}

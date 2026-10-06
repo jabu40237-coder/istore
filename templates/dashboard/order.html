@@ -1,0 +1,39 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<div class="card" style="max-width:640px;">
+  <h2 style="margin-bottom:1.2rem;">{{ t('new_order') }}</h2>
+  {% if error %}<div class="alert err">{{ t(error) }}</div>{% endif %}
+  {% if not svc %}
+  <form method="get" class="searchbar">
+    <select class="select" name="service" onchange="this.form.submit()" style="flex:1;">
+      <option value="">— {{ t('service') }} —</option>
+      {% for s in services %}
+      <option value="{{ s.id }}">{{ s.name }} ({{ fmt_money(s.selling_price_usd,'USD') }}{{ t('per_1000') }})</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% else %}
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <input type="hidden" name="service_id" value="{{ svc.id }}">
+    <div class="field"><label class="lbl">{{ t('service') }}</label>
+      <div class="card" style="padding:.7rem 1rem;">{{ svc.name }}</div></div>
+    <div class="field"><label class="lbl">{{ t('link') }}</label>
+      <input class="input" type="url" name="link" value="{{ link or '' }}" required dir="ltr"
+             placeholder="https://"></div>
+    <div class="field"><label class="lbl">{{ t('quantity') }} ({{ t('min') }} {{ svc.min_quantity }} — {{ t('max') }} {{ svc.max_quantity }})</label>
+      <input class="input" id="quantity" type="number" name="quantity"
+             value="{{ qty or svc.min_quantity }}" min="{{ svc.min_quantity }}" max="{{ svc.max_quantity }}"
+             data-service="{{ svc.id }}" data-per1000="{{ svc.selling_price_usd }}" required dir="ltr"></div>
+    {% if 'comment' in svc.service_type.lower() %}
+    <div class="field"><label class="lbl">{{ t('comments') }} ({{ t('estimated') }})</label>
+      <textarea class="input" name="x_comments" rows="4" dir="ltr" placeholder="one per line"></textarea></div>
+    {% endif %}
+    <div class="field"><label class="lbl">{{ t('total') }}</label>
+      <div id="live-price" class="card" style="padding:.7rem 1rem; font-weight:900; font-size:1.2rem;">$0.0000</div></div>
+    <button class="btn btn-primary" style="width:100%;" type="submit">{{ t('place_order') }}</button>
+  </form>
+  <p style="margin-top:.8rem;"><a href="{{ url_for('user.new_order') }}" style="color:var(--text-muted); font-size:.85rem;">{{ t('back') }}</a></p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.6rem;">
+  <h2>{{ t('services') }}</h2>
+  <form method="post" action="{{ url_for('admin.services_sync') }}">
+    <button class="btn btn-primary btn-sm" type="submit">{{ t('sync_now') }}</button>
+  </form>
+</div>
+<form class="searchbar" method="get">
+  <input class="input" type="search" name="q" value="{{ q }}" placeholder="{{ t('search') }}" style="max-width:320px;">
+  <button class="btn btn-ghost btn-sm" type="submit">{{ t('search') }}</button>
+</form>
+<div class="table-wrap"><table class="tbl">
+  <tr><th>ID</th><th>{{ t('service') }}</th><th>{{ t('price') }}/1k</th><th>{{ t('min') }}</th><th>{{ t('max') }}</th><th>{{ t('status') }}</th><th></th></tr>
+  {% for s in services %}
+  <tr>
+    <td>{{ s.id }}</td>
+    <td style="white-space:normal; min-width:220px;">{{ s.name }}</td>
+    <td>${{ s.selling_price_usd }}</td>
+    <td>{{ s.min_quantity }}</td><td>{{ s.max_quantity }}</td>
+    <td><span class="badge {{ 'ok' if s.status=='active' else 'mut' }}">{{ s.status }}</span></td>
+    <td><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.service_edit', sid=s.id) }}">{{ t('edit') }}</a></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

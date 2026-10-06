@@ -1,0 +1,23 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <h2>{{ t('notifications') }}</h2>
+  <form method="post" action="{{ url_for('user.notif_read') }}">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <button class="btn btn-ghost btn-sm" type="submit">{{ t('mark_all_read') }}</button>
+  </form>
+</div>
+{% if items %}
+<div class="grid" style="gap:.7rem;">
+  {% for n in items %}
+  <div class="card" style="padding:.9rem 1.1rem; {% if not n.is_read %}border-color:rgba(108,92,231,.5);{% endif %}">
+    <strong>{{ t(n.title) if n.title.startswith('st_') or n.title in ['order_created','order_failed'] else n.title }}</strong>
+    <p style="color:var(--text-muted); font-size:.9rem;">{{ n.body }}</p>
+    <small style="color:var(--text-muted);">{{ n.created_at.strftime('%Y-%m-%d %H:%M') if n.created_at }}</small>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty"><div class="ico">🔔</div><p>{{ t('no_notifications') }}</p></div>
+{% endif %}
+{% endblock %}

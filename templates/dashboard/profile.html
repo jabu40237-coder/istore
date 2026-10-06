@@ -1,0 +1,27 @@
+{% extends "dashboard/base_dash.html" %}
+{% block dash %}
+<div class="card" style="max-width:520px;">
+  <h2 style="margin-bottom:1.2rem;">{{ t('profile') }}</h2>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <div class="field"><label class="lbl">{{ t('name') }}</label>
+      <input class="input" name="name" value="{{ u.name }}"></div>
+    <div class="field"><label class="lbl">{{ t('email') }}</label>
+      <input class="input" value="{{ u.email }}" disabled dir="ltr"></div>
+    <div class="field"><label class="lbl">{{ t('phone') }}</label>
+      <input class="input" name="phone" value="{{ u.phone }}" dir="ltr"></div>
+    <div class="field"><label class="lbl">{{ t('language') }}</label>
+      <select class="select" name="language">
+        <option value="ku" {% if u.language=='ku' %}selected{% endif %}>Kurdî (Badînî)</option>
+        <option value="ar" {% if u.language=='ar' %}selected{% endif %}>العربية</option>
+        <option value="en" {% if u.language=='en' %}selected{% endif %}>English</option>
+      </select></div>
+    <div class="field"><label class="lbl">{{ t('currency') }}</label>
+      <select class="select" name="currency">
+        <option value="USD" {% if u.currency=='USD' %}selected{% endif %}>USD ($)</option>
+        <option value="IQD" {% if u.currency=='IQD' %}selected{% endif %}>IQD (د.ع)</option>
+      </select></div>
+    <button class="btn btn-primary" type="submit">{{ t('save') }}</button>
+  </form>
+</div>
+{% endblock %}

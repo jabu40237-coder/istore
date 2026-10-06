@@ -1,0 +1,25 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<div class="card" style="max-width:640px;">
+  <h2 style="margin-bottom:1rem;">{{ t('edit') }} — #{{ svc.id }}</h2>
+  <p style="color:var(--text-muted); margin-bottom:1.2rem;">{{ svc.name }}</p>
+  <form method="post">
+    <div class="field"><label class="lbl">{{ t('price') }} USD /1000 ({{ t('estimated') }}: provider ${{ svc.provider_rate }})</label>
+      <input class="input" name="custom_price_usd" dir="ltr"
+             value="{{ svc.custom_price_usd if svc.custom_price_usd is not none else '' }}"
+             placeholder="{{ t('estimated') }}: auto"></div>
+    <div class="field"><label class="lbl">{{ t('status') }}</label>
+      <select class="select" name="status">
+        {% for st in ['active','inactive','provider_unavailable'] %}
+        <option value="{{ st }}" {% if svc.status==st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select></div>
+    <div class="field"><label class="lbl">Sort</label>
+      <input class="input" name="sort_order" type="number" value="{{ svc.sort_order }}" dir="ltr"></div>
+    <div class="field"><label style="display:flex; gap:.5rem; align-items:center;">
+      <input type="checkbox" name="is_featured" {% if svc.is_featured %}checked{% endif %}> {{ t('featured') }}</label></div>
+    <button class="btn btn-primary" type="submit">{{ t('save') }}</button>
+    <a class="btn btn-ghost" href="{{ url_for('admin.services') }}">{{ t('back') }}</a>
+  </form>
+</div>
+{% endblock %}
