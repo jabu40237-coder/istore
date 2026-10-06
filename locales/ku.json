@@ -239,5 +239,11 @@
   "tickets": "تکتەکان",
   "reply": "وەڵام",
   "reopen": "ڤەکە",
-  "support_reply": "وەڵامێ پشتیڤانیێ"
+  "support_reply": "وەڵامێ پشتیڤانیێ",
+  "change_password": "گوهارتنێ ژمارا نهێنی",
+  "current_password": "ژمارا نهێنی یا نها",
+  "new_password": "ژمارا نهێنی یا نوو",
+  "wrong_password": "ژمارا نهێنی یا نها خەلەتە",
+  "password_too_short": "ژمارا نهێنی کێمتر ژ ٨ پیتانە",
+  "ok": "باشە"
 }

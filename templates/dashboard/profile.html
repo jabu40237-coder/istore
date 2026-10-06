@@ -25,6 +25,18 @@
   </form>
 </div>
 <div class="card" style="max-width:520px; margin-top:1.2rem;">
+  <h3 style="margin-bottom:.8rem;">{{ t('change_password') }}</h3>
+  {% if pw_msg %}<div class="alert {{ 'ok' if pw_msg=='ok' else 'err' }}">{{ t(pw_msg) }}</div>{% endif %}
+  <form method="post" action="{{ url_for('user.change_password') }}">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <div class="field"><label class="lbl">{{ t('current_password') }}</label>
+      <input class="input" type="password" name="current_pw" dir="ltr"></div>
+    <div class="field"><label class="lbl">{{ t('new_password') }}</label>
+      <input class="input" type="password" name="new_pw" dir="ltr"></div>
+    <button class="btn btn-ghost btn-sm" type="submit">{{ t('change_password') }}</button>
+  </form>
+</div>
+<div class="card" style="max-width:520px; margin-top:1.2rem;">
   <h3 style="margin-bottom:.8rem;">Telegram</h3>
   {% if u.telegram_id %}
   <p class="ok-dot">● {{ t('tg_linked') }}</p>

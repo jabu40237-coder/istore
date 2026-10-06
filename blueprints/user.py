@@ -291,11 +291,37 @@ def profile():
         from flask import session as fsession
         from models import NotificationPreference
         tg_code = fsession.pop("tg_code", None)
+        pw_msg = fsession.pop("pw_msg", None)
         pref = db.query(NotificationPreference).filter_by(user_id=u.id).first()
         return render_template("dashboard/profile.html", u=u, tg_code=tg_code,
-                               tg_pref=pref.telegram_enabled if pref else False)
+                               tg_pref=pref.telegram_enabled if pref else False,
+                               pw_msg=pw_msg)
     finally:
         db.close()
+
+
+@bp.route("/profile/change-password", methods=["POST"])
+@auth_svc.login_required
+def change_password():
+    if request.form.get("csrf") != __import__("flask").session.get("csrf"):
+        abort(400)
+    from flask import session as fsession
+    db = get_session()
+    try:
+        u = db.query(User).filter_by(id=g.user.id).first()
+        cur = request.form.get("current_pw", "")
+        new = request.form.get("new_pw", "")
+        if not auth_svc.check_password(cur, u.password_hash):
+            fsession["pw_msg"] = "wrong_password"
+        elif len(new) < 8:
+            fsession["pw_msg"] = "password_too_short"
+        else:
+            u.password_hash = auth_svc.hash_password(new)
+            db.commit()
+            fsession["pw_msg"] = "ok"
+    finally:
+        db.close()
+    return redirect(url_for("user.profile"))
 
 
 @bp.route("/profile/telegram-code", methods=["POST"])

@@ -239,5 +239,11 @@
   "tickets": "Tickets",
   "reply": "Reply",
   "reopen": "Reopen",
-  "support_reply": "Support reply"
+  "support_reply": "Support reply",
+  "change_password": "Change password",
+  "current_password": "Current password",
+  "new_password": "New password",
+  "wrong_password": "Current password is wrong",
+  "password_too_short": "Password must be at least 8 characters",
+  "ok": "Done"
 }

@@ -239,5 +239,11 @@
   "tickets": "التذاكر",
   "reply": "رد",
   "reopen": "إعادة فتح",
-  "support_reply": "رد الدعم"
+  "support_reply": "رد الدعم",
+  "change_password": "تغيير كلمة المرور",
+  "current_password": "كلمة المرور الحالية",
+  "new_password": "كلمة المرور الجديدة",
+  "wrong_password": "كلمة المرور الحالية خاطئة",
+  "password_too_short": "كلمة المرور أقل من ٨ أحرف",
+  "ok": "تم"
 }
