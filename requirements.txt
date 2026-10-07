@@ -7,3 +7,6 @@ psycopg2-binary>=2.9
 pyotp>=2.9
 qrcode[pil]>=8.0
 PyJWT>=2.8
+Flask-Limiter==4.1.1
+Flask-Talisman==1.1.0
+cryptography==50.0.2

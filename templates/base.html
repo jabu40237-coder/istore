@@ -6,7 +6,7 @@
 <title>{% block title %}{{ t('app_name') }} | {{ t('app_name_latin') }}{% endblock %}</title>
 <meta name="description" content="{{ t('subheading') }}">
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 tailwind.config = {
   theme: { extend: { colors: { primary: '#F97316', primarydark: '#EA580C' } } }
 }

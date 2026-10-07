@@ -5,9 +5,12 @@ style locking via the DB transaction (SQLite: single writer; PostgreSQL:
 row locks work the same through this code path).
 """
 from decimal import Decimal
+import logging
 
 from db import get_session
 from models import Wallet, Transaction, User, now
+
+log = logging.getLogger("istore.security")
 
 
 def get_wallet(db, user_id: int) -> Wallet:
@@ -40,6 +43,9 @@ def apply_transaction(db, user_id: int, type_: str, amount_usd: Decimal,
     )
     db.add(tx)
     db.flush()
+    # Security audit trail: amounts and parties only — never secrets.
+    log.info("event=wallet_tx user_id=%s type=%s amount_usd=%s balance_after=%s ref=%s",
+             user_id, type_, str(amount_usd), str(new_balance), reference or "-")
     return tx
 
 

@@ -93,7 +93,7 @@
   </div>
 </section>
 <style>@media(max-width:860px){ .detail-grid{ grid-template-columns:1fr !important; } }</style>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var qty = document.getElementById('dQty'), total = document.getElementById('dTotal');
   if(qty && total){

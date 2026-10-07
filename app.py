@@ -1,15 +1,22 @@
 """i Store | ئایستۆر — Flask application factory + public routes."""
+import logging
 import os
+import time
+from datetime import timedelta
 from decimal import Decimal
 
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, g, abort, jsonify, make_response)
+from flask_talisman import Talisman
 
 from config import Config
 from db import init_db, get_session
 from models import Service, Platform, Category, SystemSetting, User, now
 import i18n
 from services import auth as auth_svc
+from services.limits import limiter
+
+sec_log = logging.getLogger("istore.security")
 
 
 def create_app():
@@ -17,10 +24,62 @@ def create_app():
                 template_folder="templates",
                 static_folder="static")
     app.config["SECRET_KEY"] = Config.SECRET_KEY
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=12)
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     if Config.ENV == "production":
         app.config["SESSION_COOKIE_SECURE"] = True
+
+    # ---------- reverse-proxy trust ----------
+    # Apply ProxyFix ONLY when TRUST_PROXY=1, i.e. exactly one trusted
+    # reverse proxy (Koyeb / Cloudflare) sits in front of the app and sets
+    # X-Forwarded-For / X-Forwarded-Proto. x_for=1, x_proto=1 trusts exactly
+    # one hop. Over-trusting (or trusting without a real proxy) lets
+    # clients spoof their IP (rate-limit / audit evasion) and can cause
+    # http<->https redirect loops. Default: off (direct deploys).
+    if os.environ.get("TRUST_PROXY") == "1":
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+
+    # ---------- security headers (Flask-Talisman) ----------
+    _cdn = ["https://cdn.tailwindcss.com", "https://cdnjs.cloudflare.com"]
+    Talisman(
+        app,
+        force_https=(Config.ENV == "production"),
+        strict_transport_security=True,
+        strict_transport_security_max_age=31536000,
+        session_cookie_secure=True,
+        session_cookie_http_only=True,
+        session_cookie_samesite="Lax",
+        frame_options="DENY",
+        permissions_policy={},  # set manually in _headers below
+        content_security_policy={
+            "default-src": "'self'",
+            # CSP TECH DEBT: 'unsafe-inline' stays in script-src because the
+            # Jinja templates use inline onclick/onchange handlers, which a
+            # nonce cannot cover (per CSP3, browsers ignore 'unsafe-inline'
+            # whenever a nonce-source is present, so the per-request nonce
+            # below hardens the <script> blocks that carry it; the inline
+            # handlers remain the known gap to clean up). style-src keeps
+            # 'unsafe-inline' because the Tailwind Play CDN injects runtime
+            # <style> tags — building Tailwind locally later removes it.
+            "script-src": ["'self'", "'unsafe-inline'"] + _cdn,
+            "style-src": ["'self'", "'unsafe-inline'"] + _cdn,
+            "img-src": ["'self'", "data:", "https:"],
+            "font-src": ["'self'", "https:", "data:"],
+            "connect-src": ["'self'"] + _cdn,
+            "object-src": "'none'",
+            "base-uri": "'self'",
+            "frame-ancestors": "'none'",
+        },
+        # per-request nonce -> request.csp_nonce in Jinja; inline <script>
+        # tags carry nonce="{{ request.csp_nonce }}"
+        content_security_policy_nonce_in=["script-src"],
+    )
+
+    # Rate limiting (see services/limits.py for key function + storage note).
+    # Global default: 200 requests/hour per client.
+    limiter.init_app(app)
 
     init_db()
     auth_svc.ensure_roles()
@@ -30,12 +89,32 @@ def create_app():
     # ---------- i18n / request context ----------
     @app.before_request
     def _before():
+        # sessions are permanent so the 12h PERMANENT_SESSION_LIFETIME applies
+        session.permanent = True
         lang = request.args.get("lang")
         if lang in i18n.SUPPORTED:
             session["lang"] = lang
         g.lang = session.get("lang") or _user_lang() or "ku"
         g.rtl = i18n.is_rtl(g.lang)
         g.user = auth_svc.current_user()
+        if g.user:
+            # Session age anchor. login_at is stamped at login (see the
+            # login view below); bootstrap it for sessions that predate
+            # this so the admin lifetime check has something to compare.
+            if "login_at" not in session:
+                session["login_at"] = time.time()
+            # Role-based max age: SUPER_ADMIN sessions expire 30 minutes
+            # after login, regardless of the 12h permanent lifetime.
+            if auth_svc.has_role(g.user, "SUPER_ADMIN"):
+                try:
+                    age = time.time() - float(session.get("login_at") or 0)
+                except (TypeError, ValueError):
+                    age = 0
+                if age > 30 * 60:
+                    sec_log.warning("event=admin_session_expired user_id=%s",
+                                    g.user.id)
+                    auth_svc.logout_user()
+                    return redirect(url_for("login"))
         # ensure a CSRF token exists for every session (guests included)
         if not session.get("csrf"):
             import secrets
@@ -68,12 +147,27 @@ def create_app():
                     social_links=site_svc.get_social_links())
 
     # ---------- security headers ----------
+    # Talisman sets CSP / X-Frame-Options / X-Content-Type-Options /
+    # Referrer-Policy / HSTS. Permissions-Policy is added here since
+    # Talisman does not set it.
     @app.after_request
     def _headers(resp):
-        resp.headers["X-Content-Type-Options"] = "nosniff"
-        resp.headers["X-Frame-Options"] = "DENY"
-        resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        resp.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=()")
         return resp
+
+    # ---------- error pages ----------
+    @app.errorhandler(404)
+    def _not_found(e):
+        return render_template("404.html"), 404
+
+    @app.errorhandler(500)
+    def _server_error(e):
+        return render_template("500.html"), 500
+
+    @app.errorhandler(429)
+    def _rate_limited(e):
+        return render_template("429.html"), 429
 
     # ---------- public pages ----------
     @app.route("/")
@@ -324,6 +418,7 @@ def create_app():
 
     # ---------- auth ----------
     @app.route("/login", methods=["GET", "POST"])
+    @limiter.limit("5 per minute;20 per hour", methods=["POST"])  # auth brute-force guard
     def login():
         if request.method == "POST":
             ip = request.remote_addr or "?"
@@ -362,8 +457,13 @@ def create_app():
                             db2.commit()
                         finally:
                             db2.close()
+                    import time
+                    session["login_at"] = time.time()  # session age anchor
+                    sec_log.info("event=login_success user_id=%s email=%s",
+                                 u.id, email)
                     nxt = request.args.get("next") or url_for("user.dashboard")
                     return redirect(nxt)
+                sec_log.warning("event=login_failed email=%s", email)
                 return render_template("login.html", error="login_failed"), 401
             finally:
                 db.close()
@@ -395,6 +495,8 @@ def create_app():
                         _sess.clear()
                         return redirect(url_for("login"))
                     auth_svc.login_user(u)  # clears pending marker
+                    _sess["login_at"] = time.time()
+                    sec_log.info("event=login_success_totp user_id=%s", uid)
                     from models import AuditLog as _AL
                     db2 = get_session()
                     try:
@@ -411,6 +513,7 @@ def create_app():
         return render_template("totp_verify.html")
 
     @app.route("/register", methods=["GET", "POST"])
+    @limiter.limit("5 per minute;20 per hour", methods=["POST"])  # account-creation guard
     def register():
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
@@ -436,7 +539,9 @@ def create_app():
 
     @app.route("/logout")
     def logout():
+        uid = session.get("user_id")
         auth_svc.logout_user()
+        sec_log.info("event=logout user_id=%s", uid)
         return redirect(url_for("index"))
 
     # blueprints
@@ -446,6 +551,23 @@ def create_app():
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+
+    # Order-creation guard: 20/min on POST. Applied here (wrapping the
+    # registered view — Flask resolves view_functions at dispatch time)
+    # rather than in blueprints/user.py, which is under active development
+    # elsewhere. Move the decorator onto the view itself when convenient:
+    #   @limiter.limit("20 per minute", methods=["POST"])
+    _order_view = app.view_functions.get("user.new_order")
+    if _order_view is not None:
+        from flask_limiter.util import get_qualified_name
+        _order_limit = limiter.limit("20 per minute", methods=["POST"])
+        app.view_functions["user.new_order"] = _order_limit(_order_view)
+        # Flask-Limiter's before_request middleware discovers decorated
+        # limits via endpoint hints (normally registered on first view
+        # invocation); register up-front so the limit applies from the
+        # very first request, even ones rejected before the view runs.
+        limiter.limit_manager.add_endpoint_hint(
+            "user.new_order", get_qualified_name(_order_view))
 
     return app
 
@@ -544,4 +666,7 @@ def fmt_money(amount, currency="USD") -> str:
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="127.0.0.1", port=5050, debug=(Config.ENV == "development"))
+    # Debug is strictly opt-in: set FLASK_DEBUG=1 to enable, never on by
+    # default (even when APP_ENV=development).
+    app.run(host="127.0.0.1", port=5050,
+            debug=os.environ.get("FLASK_DEBUG", "0") == "1")

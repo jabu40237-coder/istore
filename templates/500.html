@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}500 — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<section class="container" style="text-align:center;padding:4rem 1rem;">
+  <div style="font-size:4.5rem;font-weight:800;color:#F97316;line-height:1;">500</div>
+  <h1 style="margin:1rem 0 .5rem;">Something went wrong</h1>
+  <p style="color:#666;max-width:32rem;margin:0 auto 1.5rem;">
+    {% if rtl %}هەڵەیەک ڕوویدا. تکایە دواتر هەوڵ بدەرەوە.{% elif lang == 'ar' %}حدث خطأ ما. يرجى المحاولة لاحقًا.{% else %}An unexpected error occurred. Please try again later.{% endif %}
+  </p>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('home') }}</a>
+</section>
+{% endblock %}

@@ -22,8 +22,11 @@ def _provider():
         if Config.PROVIDER_MODE == "kd1s":
             key = Config.KD1S_API_KEY
             if not key:
-                s = db.query(SystemSetting).filter_by(key="kd1s_api_key").first()
-                key = s.value if s else ""
+                try:
+                    from services.secrets import get_secret
+                    key = get_secret(db, "kd1s_api_key", "")
+                except Exception:
+                    key = ""
             url = Config.KD1S_API_URL
             s2 = db.query(SystemSetting).filter_by(key="kd1s_api_url").first()
             if s2 and s2.value:

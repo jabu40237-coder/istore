@@ -17,6 +17,12 @@ from models import Job, Provider, ProviderHealthLog, SystemSetting, now
 def _setting(key: str, default: str) -> str:
     db = get_session()
     try:
+        if key == "kd1s_api_key":
+            try:
+                from services.secrets import get_secret
+                return get_secret(db, key, default)
+            except Exception:
+                pass
         s = db.query(SystemSetting).filter_by(key=key).first()
         return s.value if s and s.value else default
     finally:

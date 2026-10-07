@@ -405,12 +405,10 @@ def settings():
                 s.value = v.strip()
             # secret: only update when provided (never displayed back)
             secret = request.form.get("kd1s_api_key", "").strip()
+            # secret: encrypted at rest via services.secrets (never displayed back)
             if secret:
-                s = db.query(SystemSetting).filter_by(key="kd1s_api_key").first()
-                if not s:
-                    s = SystemSetting(key="kd1s_api_key", is_secret=True)
-                    db.add(s)
-                s.value = secret
+                from services.secrets import set_secret
+                set_secret(db, "kd1s_api_key", secret)
             db.commit()
             _audit("settings_change", "settings", {"keys": keys})
             return redirect(url_for("admin.settings"))
@@ -541,6 +539,14 @@ def pricing():
 
 
 def _sys(db, key: str) -> str:
+    # secret keys go through the encrypted store (Fernet at rest);
+    # get_secret migrates legacy plaintext to ciphertext on read.
+    if key == "kd1s_api_key" or key.startswith("payment_"):
+        try:
+            from services.secrets import get_secret
+            return get_secret(db, key, "")
+        except Exception:
+            pass
     s = db.query(SystemSetting).filter_by(key=key).first()
     return s.value if s else ""
 

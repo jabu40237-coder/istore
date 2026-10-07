@@ -18,7 +18,7 @@
   </div>
 {% endfor %}
 </div>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 function testConn(id){
   fetch('/admin/providers/'+id+'/test',{method:'POST'}).then(r=>r.json()).then(j=>{
     document.getElementById('pinfo-'+id).textContent =
