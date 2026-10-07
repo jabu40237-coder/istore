@@ -21,8 +21,32 @@
     {% endfor %}
   </table></div>
   {% else %}
-  <div class="empty"><div class="ico">📦</div><p>{{ t('no_orders') }}</p>
+  <div class="empty"><div class="ico"><svg viewBox="0 0 24 24" width="44" height="44" fill="#FDBA74"><path d="M20 2H4a2 2 0 00-2 2v3h20V4a2 2 0 00-2-2zM2 9v11a2 2 0 002 2h16a2 2 0 002-2V9H2zm5 3h4v4H7v-4z"/></svg></div><p>{{ t('no_orders') }}</p>
   <a class="btn btn-primary btn-sm" href="{{ url_for('user.new_order') }}">{{ t('new_order') }}</a></div>
   {% endif %}
 </div>
+
+{% if rv_services %}
+<div class="card" style="margin-top:1.2rem;">
+  <h3 style="margin-bottom:1rem;">{{ t('recently_viewed') }}</h3>
+  <div class="svc-grid">
+    {% for s in rv_services %}
+    <div class="svc-card">
+      <div class="svc-card-top" style="min-height:70px; padding:1rem;">
+        <div class="plat-3d" style="width:40px; height:40px;">
+          <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>
+        </div>
+      </div>
+      <div class="svc-card-body">
+        <h3 style="font-size:.85rem;">{{ s.name|truncate(60) }}</h3>
+        <div class="svc-card-foot">
+          <span class="svc-price">{{ fmt_price(s.selling_price_usd) }}<small>/1K</small></span>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('view_details') }}</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 {% endblock %}

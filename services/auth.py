@@ -74,6 +74,11 @@ def is_admin(user) -> bool:
     return has_role(user, "SUPER_ADMIN", "ADMIN")
 
 
+def is_super_admin(user) -> bool:
+    """Strict check: only the SUPER_ADMIN role (Ali). Used for /admin lockdown."""
+    return has_role(user, "SUPER_ADMIN")
+
+
 def login_required(f):
     @wraps(f)
     def wrapper(*a, **kw):
@@ -89,6 +94,18 @@ def admin_required(f):
         u = current_user()
         if not u or not is_admin(u):
             abort(403)
+        return f(*a, **kw)
+    return wrapper
+
+
+def super_admin_required(f):
+    """Ali-only gate for the /admin panel. Rejects ADMIN/SUPPORT roles.
+    Returns 404 (not 403) to avoid confirming the path exists."""
+    @wraps(f)
+    def wrapper(*a, **kw):
+        u = current_user()
+        if not u or not is_super_admin(u):
+            abort(404)
         return f(*a, **kw)
     return wrapper
 

@@ -1,4 +1,5 @@
 """Admin panel blueprint: /admin/* — RBAC protected."""
+import os
 from decimal import Decimal
 from datetime import datetime, timedelta
 
@@ -18,6 +19,41 @@ from config import Config
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
+def _client_ip() -> str:
+    """Real client IP. X-Forwarded-For is honored ONLY when TRUST_PROXY=1,
+    otherwise request.remote_addr is used (prevents header spoofing)."""
+    if os.environ.get("TRUST_PROXY") == "1":
+        fwd = request.headers.get("X-Forwarded-For", "")
+        if fwd:
+            return fwd.split(",")[0].strip()
+    return request.remote_addr or ""
+
+
+@bp.before_request
+def _enforce_admin_ip_allowlist():
+    """Ali-only network gate for /admin.
+
+    Source of truth: ADMIN_IP_ALLOWLIST env var (comma-separated, empty=allow).
+    If the env var is UNSET, falls back to the `admin_ip_allowlist` system
+    setting. Returns 404 (not 403) to avoid confirming the path exists.
+    X-Forwarded-For is honored ONLY when TRUST_PROXY=1."""
+    raw = os.environ.get("ADMIN_IP_ALLOWLIST")
+    if raw is None:
+        db = get_session()
+        try:
+            s = db.query(SystemSetting).filter_by(key="admin_ip_allowlist").first()
+            raw = s.value if s and s.value else ""
+        finally:
+            db.close()
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    allowed = {x.strip() for x in raw.split(",") if x.strip()}
+    if _client_ip() not in allowed:
+        abort(404)
+    return None
+
+
 def _audit(action, target="", meta=None):
     db = get_session()
     try:
@@ -31,7 +67,7 @@ def _audit(action, target="", meta=None):
 
 
 @bp.route("/")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def dashboard():
     db = get_session()
     try:
@@ -65,7 +101,7 @@ def dashboard():
 
 # ---------- services ----------
 @bp.route("/services")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def services():
     db = get_session()
     try:
@@ -80,7 +116,7 @@ def services():
 
 
 @bp.route("/services/<int:sid>", methods=["GET", "POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def service_edit(sid):
     db = get_session()
     try:
@@ -108,7 +144,7 @@ def service_edit(sid):
 
 
 @bp.route("/services/sync", methods=["POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def services_sync():
     db = get_session()
     try:
@@ -130,7 +166,7 @@ def services_sync():
 
 # ---------- orders ----------
 @bp.route("/orders")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def orders():
     db = get_session()
     try:
@@ -145,7 +181,7 @@ def orders():
 
 
 @bp.route("/orders/<int:oid>/refund", methods=["POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def order_refund(oid):
     db = get_session()
     try:
@@ -167,7 +203,7 @@ def order_refund(oid):
 
 # ---------- users ----------
 @bp.route("/users")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def users():
     db = get_session()
     try:
@@ -183,7 +219,7 @@ def users():
 
 
 @bp.route("/users/<int:uid>/adjust", methods=["POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def user_adjust(uid):
     db = get_session()
     try:
@@ -202,7 +238,7 @@ def user_adjust(uid):
 
 
 @bp.route("/users/<int:uid>/suspend", methods=["POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def user_suspend(uid):
     db = get_session()
     try:
@@ -220,7 +256,7 @@ def user_suspend(uid):
 
 
 @bp.route("/users/<int:uid>/activate", methods=["POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def user_activate(uid):
     db = get_session()
     try:
@@ -236,7 +272,7 @@ def user_activate(uid):
 
 
 @bp.route("/tickets")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def tickets():
     from models import Ticket
     db = get_session()
@@ -255,7 +291,7 @@ def tickets():
 
 
 @bp.route("/tickets/<int:tid>", methods=["GET", "POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def ticket_detail(tid):
     from models import Ticket, TicketMessage
     db = get_session()
@@ -298,7 +334,7 @@ def ticket_detail(tid):
 
 # ---------- providers ----------
 @bp.route("/providers")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def providers():
     db = get_session()
     try:
@@ -309,7 +345,7 @@ def providers():
 
 
 @bp.route("/providers/<int:pid>/test", methods=["POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def provider_test(pid):
     db = get_session()
     try:
@@ -332,7 +368,7 @@ def provider_test(pid):
 
 
 @bp.route("/providers/<int:pid>/balance")
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def provider_balance(pid):
     db = get_session()
     try:
@@ -351,12 +387,12 @@ def provider_balance(pid):
 
 # ---------- settings ----------
 @bp.route("/settings", methods=["GET", "POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def settings():
     db = get_session()
     try:
         keys = ["site_name", "accent_color", "usd_to_iqd", "maintenance_mode",
-                "kd1s_api_url", "sync_interval_minutes"]
+                "kd1s_api_url", "sync_interval_minutes", "admin_ip_allowlist"]
         if request.method == "POST":
             for k in keys:
                 v = request.form.get(k)
@@ -387,8 +423,55 @@ def settings():
         db.close()
 
 
+@bp.route("/security")
+@auth_svc.super_admin_required
+def security():
+    """2FA (TOTP) management for the Ali-only admin account."""
+    from services import totp as totp_svc
+    enabled = totp_svc.is_enabled(g.user.id)
+    remaining = totp_svc.backup_codes_remaining(g.user.id) if enabled else 0
+    return render_template("admin/security.html", totp_enabled=enabled,
+                           codes_remaining=remaining)
+
+
+@bp.route("/security/totp/begin", methods=["POST"])
+@auth_svc.super_admin_required
+def totp_begin():
+    from services import totp as totp_svc
+    secret, uri, codes = totp_svc.begin_enrollment(g.user.id)
+    _audit("totp_enroll_begin", f"user:{g.user.id}", {})
+    return render_template("admin/security.html", totp_enabled=False,
+                           codes_remaining=0, enroll_secret=secret,
+                           enroll_uri=uri, enroll_qr=totp_svc.qr_data_uri(uri),
+                           backup_codes=codes)
+
+
+@bp.route("/security/totp/confirm", methods=["POST"])
+@auth_svc.super_admin_required
+def totp_confirm():
+    from services import totp as totp_svc
+    code = request.form.get("code", "")
+    if totp_svc.confirm_enrollment(g.user.id, code):
+        _audit("totp_enabled", f"user:{g.user.id}", {})
+        return redirect(url_for("admin.security"))
+    return render_template("admin/security.html", totp_enabled=False,
+                           codes_remaining=0, enroll_error=True)
+
+
+@bp.route("/security/totp/disable", methods=["POST"])
+@auth_svc.super_admin_required
+def totp_disable():
+    from services import totp as totp_svc
+    code = request.form.get("code", "")
+    # require a valid current code before disabling
+    if totp_svc.verify_code(g.user.id, code):
+        totp_svc.disable(g.user.id)
+        _audit("totp_disabled", f"user:{g.user.id}", {})
+    return redirect(url_for("admin.security"))
+
+
 @bp.route("/pricing", methods=["GET", "POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def pricing():
     db = get_session()
     try:
@@ -421,7 +504,7 @@ def _sys(db, key: str) -> str:
 
 
 @bp.route("/social", methods=["GET", "POST"])
-@auth_svc.admin_required
+@auth_svc.super_admin_required
 def social():
     from models import SocialLink
     from services import site as site_svc

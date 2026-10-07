@@ -322,3 +322,25 @@ class NotificationPreference(Base):
     order_updates = Column(Boolean, default=True)
     telegram_enabled = Column(Boolean, default=False)
     updated_at = Column(DateTime, default=now, onupdate=now)
+
+
+class TotpDevice(Base):
+    """TOTP 2FA device for admin users. Secret is Fernet-encrypted at rest."""
+    __tablename__ = "totp_devices"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False,
+                     index=True)
+    secret_enc = Column(Text, nullable=False)
+    enabled = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=now)
+    last_used_at = Column(DateTime, nullable=True)
+
+
+class TotpBackupCode(Base):
+    """Single-use TOTP backup codes (bcrypt-hashed, never stored plaintext)."""
+    __tablename__ = "totp_backup_codes"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    code_hash = Column(String(128), nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=now)

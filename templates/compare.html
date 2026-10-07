@@ -16,7 +16,7 @@
     <tr><td></td>{% for s in services %}<td><a class="btn btn-primary btn-sm" href="{{ url_for('service_detail', sid=s.id) }}">{{ t('view_details') }}</a></td>{% endfor %}</tr>
   </table></div>
   {% else %}
-  <div class="empty"><div class="ico">⚖️</div><p>{{ t('compare_services') }} — /compare?ids=1,2,3</p></div>
+  <div class="empty"><div class="ico"><svg viewBox="0 0 24 24" width="40" height="40" fill="#F97316"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-3 6h6v2h-2v8h-2v-8H9V8z"/></svg></div><p>{{ t('compare_hint') }}</p></div>
   {% endif %}
 </section>
 {% endblock %}

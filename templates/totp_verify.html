@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ t('two_factor') }} — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<section class="section" style="max-width:440px;">
+  <div class="card" style="text-align:center;">
+    <div style="width:64px; height:64px; margin:0 auto 1rem; border-radius:20px; background:var(--primary-light); display:grid; place-items:center;">
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="var(--primary)"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1 5h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
+    </div>
+    <h1 style="font-size:1.3rem; margin-bottom:.5rem;">{{ t('two_factor') }}</h1>
+    <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:1.4rem;">{{ t('enter_code') }}</p>
+    {% if error %}<div class="alert err">{{ t(error) }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+      <div class="field">
+        <input class="input" type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
+               dir="ltr" style="text-align:center; font-size:1.4rem; letter-spacing:.4rem;"
+               maxlength="10" required autofocus placeholder="••••••">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">{{ t('verify') }}</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

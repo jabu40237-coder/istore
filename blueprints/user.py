@@ -51,9 +51,18 @@ def dashboard():
         svc_ids = {o.service_id for o in recent}
         svc_names = {s.id: s.name for s in db.query(Service).filter(
             Service.id.in_(svc_ids)).all()} if svc_ids else {}
+        # recently viewed services (stored on service_detail visits)
+        from models import RecentlyViewed
+        rv_rows = db.query(RecentlyViewed).filter_by(user_id=uid).order_by(
+            RecentlyViewed.viewed_at.desc()).limit(6).all()
+        rv_ids = [r.service_id for r in rv_rows]
+        rv_services = db.query(Service).filter(
+            Service.id.in_(rv_ids), Service.status == "active").all() if rv_ids else []
+        rv_services.sort(key=lambda s: rv_ids.index(s.id))
         return render_template("dashboard/index.html", balance=balance, total=total,
                                completed=completed, processing=processing,
-                               recent=recent, unread=unread, svc_names=svc_names)
+                               recent=recent, unread=unread, svc_names=svc_names,
+                               rv_services=rv_services)
     finally:
         db.close()
 

@@ -47,13 +47,24 @@
     </select>
     <select class="select" name="sort" onchange="this.form.submit()" style="width:auto;">
       <option value="recommended" {% if sort=='recommended' %}selected{% endif %}>{{ t('sort_recommended') }}</option>
+      <option value="popular" {% if sort=='popular' %}selected{% endif %}>{{ t('sort_popular') }}</option>
       <option value="price_asc" {% if sort=='price_asc' %}selected{% endif %}>{{ t('sort_price_asc') }}</option>
       <option value="price_desc" {% if sort=='price_desc' %}selected{% endif %}>{{ t('sort_price_desc') }}</option>
       <option value="newest" {% if sort=='newest' %}selected{% endif %}>{{ t('sort_newest') }}</option>
     </select>
+    <input class="input" type="number" name="min_price" value="{{ f_min_price }}" placeholder="{{ t('min_price') }}" min="0" step="0.01" style="width:110px;">
+    <input class="input" type="number" name="max_price" value="{{ f_max_price }}" placeholder="{{ t('max_price') }}" min="0" step="0.01" style="width:110px;">
     <button class="btn btn-primary" type="submit">{{ t('search') }}</button>
   </form>
   {% endif %}
+
+  <!-- compare tray (max 3) -->
+  <div id="cmpTray" class="card" style="display:none; position:sticky; top:70px; z-index:40; margin-bottom:1rem; padding:.8rem 1rem; align-items:center; gap:.8rem;">
+    <strong style="font-size:.9rem;"><span id="cmpCount">0</span>/3 · {{ t('compare_services') }}</strong>
+    <div id="cmpNames" style="display:flex; gap:.4rem; flex-wrap:wrap; flex:1;"></div>
+    <button class="btn btn-primary btn-sm" id="cmpGo" disabled>{{ t('compare_now') }}</button>
+    <button class="btn btn-outline btn-sm" id="cmpClear">{{ t('clear') }}</button>
+  </div>
 
   {% if services %}
   <div class="svc-grid">
@@ -64,6 +75,10 @@
         <div class="plat-3d">
           <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>
         </div>
+        <label class="cmp-check" title="{{ t('compare_services') }}" style="position:absolute; top:10px; inset-inline-start:10px; display:flex; align-items:center; gap:.3rem; background:rgba(255,255,255,.92); border-radius:999px; padding:.25rem .6rem; font-size:.72rem; font-weight:700; cursor:pointer;">
+          <input type="checkbox" class="cmp-box" value="{{ s.id }}" data-name="{{ s.name|truncate(28) }}" style="accent-color:#F97316;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="#F97316"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-3 6h6v2h-2v8h-2v-8H9V8z"/></svg>
+        </label>
         {% if user %}
         <button class="fav-btn {% if s.id in fav_ids %}on{% endif %}" data-sid="{{ s.id }}" aria-label="favorite" style="position:absolute; top:10px; inset-inline-end:10px;">
           <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.9-10-9.5C.4 8 2.2 4.5 5.7 4.5c2 0 3.4 1.1 4.3 2.6.9-1.5 2.3-2.6 4.3-2.6 3.5 0 5.3 3.5 3.7 7-2.5 4.6-10 9.5-10 9.5z"/></svg>
@@ -111,5 +126,43 @@ document.querySelectorAll('.fav-btn').forEach(function(b){
       .then(function(r){return r.json();}).then(function(d){ if(d.ok) b.classList.toggle('on', d.favorite); });
   });
 });
+// compare tray (max 3)
+(function(){
+  var tray = document.getElementById('cmpTray');
+  if(!tray) return;
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.cmp-box'));
+  var count = document.getElementById('cmpCount');
+  var names = document.getElementById('cmpNames');
+  var go = document.getElementById('cmpGo');
+  var clear = document.getElementById('cmpClear');
+  function sel(){ return boxes.filter(function(b){ return b.checked; }); }
+  function refresh(){
+    var s = sel();
+    tray.style.display = s.length ? 'flex' : 'none';
+    count.textContent = s.length;
+    names.innerHTML = '';
+    s.forEach(function(b){
+      var tag = document.createElement('span');
+      tag.className = 'badge badge-orange';
+      tag.textContent = b.dataset.name;
+      names.appendChild(tag);
+    });
+    go.disabled = s.length < 2;
+  }
+  boxes.forEach(function(b){
+    b.addEventListener('change', function(){
+      if(b.checked && sel().length > 3){ b.checked = false; return; }
+      refresh();
+    });
+  });
+  go.addEventListener('click', function(){
+    var ids = sel().map(function(b){ return b.value; }).join(',');
+    location.href = '{{ url_for("compare") }}?ids=' + encodeURIComponent(ids);
+  });
+  clear.addEventListener('click', function(){
+    boxes.forEach(function(b){ b.checked = false; });
+    refresh();
+  });
+})();
 </script>
 {% endblock %}

@@ -1,0 +1,59 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<div class="page-head" style="padding:0 0 1rem;"><h1>{{ t('security_title') }}</h1></div>
+
+<div class="card" style="margin-bottom:1.2rem;">
+  <h3 style="margin-bottom:.6rem;">{{ t('two_factor') }}</h3>
+  <p style="color:var(--text-muted); font-size:.9rem; margin-bottom:1rem;">{{ t('two_factor_desc') }}</p>
+  {% if totp_enabled %}
+    <p><span class="badge badge-green">{{ t('totp_on') }}</span></p>
+    <p style="color:var(--text-muted); font-size:.85rem; margin:.6rem 0;">{{ t('codes_remaining') }}: <strong>{{ codes_remaining }}</strong></p>
+    <form method="post" action="{{ url_for('admin.totp_disable') }}" style="margin-top:1rem;">
+      <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+      <div class="field" style="max-width:280px;">
+        <label class="lbl">{{ t('enter_code') }}</label>
+        <input class="input" type="text" name="code" dir="ltr" required>
+      </div>
+      <button class="btn btn-outline" type="submit">{{ t('disable_2fa') }}</button>
+    </form>
+  {% else %}
+    <p><span class="badge badge-gray">{{ t('totp_off') }}</span></p>
+    {% if not enroll_secret %}
+    <form method="post" action="{{ url_for('admin.totp_begin') }}" style="margin-top:1rem;">
+      <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+      <button class="btn btn-primary" type="submit">{{ t('enable_2fa') }}</button>
+    </form>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if enroll_secret %}
+<div class="card" style="margin-bottom:1.2rem;">
+  <h3 style="margin-bottom:.8rem;">{{ t('scan_qr') }}</h3>
+  {% if enroll_error %}<div class="alert err">{{ t('enrollment_failed') }}</div>{% endif %}
+  <div style="text-align:center; margin-bottom:1rem;">
+    <img src="{{ enroll_qr }}" alt="QR" style="width:220px; height:220px; border-radius:12px; border:1px solid var(--border);">
+  </div>
+  <p style="font-size:.85rem; color:var(--text-muted);">{{ t('manual_key') }}</p>
+  <p dir="ltr" style="font-family:monospace; font-size:1.05rem; letter-spacing:.15rem; background:var(--bg); padding:.7rem; border-radius:8px; text-align:center; margin-bottom:1rem;">{{ enroll_secret }}</p>
+  <form method="post" action="{{ url_for('admin.totp_confirm') }}">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <div class="field" style="max-width:280px;">
+      <label class="lbl">{{ t('confirm_enrollment') }}</label>
+      <input class="input" type="text" name="code" dir="ltr" required>
+    </div>
+    <button class="btn btn-primary" type="submit">{{ t('verify') }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:.6rem;">{{ t('backup_codes') }}</h3>
+  <div class="alert err">{{ t('backup_codes_warning') }}</div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.5rem;" dir="ltr">
+    {% for c in backup_codes %}
+    <code style="background:var(--bg); padding:.6rem; border-radius:8px; text-align:center; font-size:.95rem;">{{ c }}</code>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

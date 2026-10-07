@@ -99,6 +99,8 @@ def create_app():
             sort = request.args.get("sort", "recommended")
             f_refill = request.args.get("refill", "")
             f_cancel = request.args.get("cancel", "")
+            f_min_price = request.args.get("min_price", "").strip()
+            f_max_price = request.args.get("max_price", "").strip()
             query = db.query(Service).filter_by(status="active")
             if q:
                 like = f"%{q}%"
@@ -117,12 +119,31 @@ def create_app():
                 query = query.filter_by(supports_refill=True)
             if f_cancel == "1":
                 query = query.filter_by(supports_cancel=True)
+            try:
+                if f_min_price:
+                    query = query.filter(Service.selling_price_usd >= float(f_min_price))
+            except ValueError:
+                f_min_price = ""
+            try:
+                if f_max_price:
+                    query = query.filter(Service.selling_price_usd <= float(f_max_price))
+            except ValueError:
+                f_max_price = ""
             if sort == "price_asc":
                 query = query.order_by(Service.selling_price_usd.asc())
             elif sort == "price_desc":
                 query = query.order_by(Service.selling_price_usd.desc())
             elif sort == "newest":
                 query = query.order_by(Service.created_at.desc())
+            elif sort == "popular":
+                # popularity = real completed-order count (never faked)
+                from models import Order as _O
+                from sqlalchemy import func as _func
+                pop = db.query(_O.service_id,
+                               _func.count(_O.id).label("cnt")).filter(
+                    _O.status == "COMPLETED").group_by(_O.service_id).subquery()
+                query = query.outerjoin(pop, pop.c.service_id == Service.id).order_by(
+                    _func.coalesce(pop.c.cnt, 0).desc(), Service.sort_order)
             else:  # recommended
                 query = query.order_by(Service.is_featured.desc(),
                                       Service.sort_order, Service.id)
@@ -139,7 +160,8 @@ def create_app():
                                    platforms=platforms, categories=categories,
                                    q=q, platform=platform, category=category,
                                    sort=sort, f_refill=f_refill,
-                                   f_cancel=f_cancel, fav_ids=fav_ids)
+                                   f_cancel=f_cancel, fav_ids=fav_ids,
+                                   f_min_price=f_min_price, f_max_price=f_max_price)
         finally:
             db.close()
 
@@ -271,13 +293,80 @@ def create_app():
             try:
                 u = db.query(User).filter_by(email=email, is_active=True).first()
                 if u and auth_svc.check_password(pw, u.password_hash):
+                    uid = u.id
+                    try:
+                        roles = [r.name for r in u.roles]
+                    except Exception:
+                        roles = []
+                    is_adminish = "SUPER_ADMIN" in roles or "ADMIN" in roles
+                    # TOTP second factor for enrolled admins (session fixation:
+                    # clear first, then set the pending marker)
+                    from services import totp as totp_svc
+                    if is_adminish and totp_svc.login_requires_totp(uid):
+                        session.clear()
+                        session["totp_pending_uid"] = uid
+                        import secrets as _sec
+                        session["csrf"] = _sec.token_hex(16)
+                        return redirect(url_for("totp_verify"))
                     auth_svc.login_user(u)
+                    # audit-log admin logins (Ali-only panel access trail)
+                    if is_adminish:
+                        from models import AuditLog as _AL
+                        db2 = get_session()
+                        try:
+                            db2.add(_AL(actor_id=uid, action="admin_login",
+                                         ip=ip,
+                                         user_agent=request.headers.get("User-Agent", "")[:500]))
+                            db2.commit()
+                        finally:
+                            db2.close()
                     nxt = request.args.get("next") or url_for("user.dashboard")
                     return redirect(nxt)
                 return render_template("login.html", error="login_failed"), 401
             finally:
                 db.close()
         return render_template("login.html")
+
+    @app.route("/totp-verify", methods=["GET", "POST"])
+    def totp_verify():
+        """Second-factor step for TOTP-enrolled admins. Hard rate-limited."""
+        from flask import session as _sess
+        uid = _sess.get("totp_pending_uid")
+        if not uid:
+            return redirect(url_for("login"))
+        from services import totp as totp_svc
+        if request.method == "POST":
+            ip = request.remote_addr or "?"
+            # hard rate limit: 5 attempts / 5 min, then force fresh login
+            if not auth_svc.check_rate_limit(f"totp:{uid}:{ip}", 5, window_s=300):
+                _sess.clear()
+                return render_template("totp_verify.html",
+                                       error="too_many_attempts"), 429
+            if request.form.get("csrf") != _sess.get("csrf"):
+                abort(400)
+            code = request.form.get("code", "")
+            if totp_svc.verify_code(uid, code):
+                db = get_session()
+                try:
+                    u = db.query(User).filter_by(id=uid, is_active=True).first()
+                    if not u:
+                        _sess.clear()
+                        return redirect(url_for("login"))
+                    auth_svc.login_user(u)  # clears pending marker
+                    from models import AuditLog as _AL
+                    db2 = get_session()
+                    try:
+                        db2.add(_AL(actor_id=uid, action="admin_login_totp",
+                                     ip=ip,
+                                     user_agent=request.headers.get("User-Agent", "")[:500]))
+                        db2.commit()
+                    finally:
+                        db2.close()
+                finally:
+                    db.close()
+                return redirect(url_for("user.dashboard"))
+            return render_template("totp_verify.html", error="invalid_code"), 401
+        return render_template("totp_verify.html")
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
