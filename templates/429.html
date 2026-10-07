@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}429 — {{ t('app_name') }}{% endblock %}
+{% block content %}
+<section class="container" style="text-align:center;padding:4rem 1rem;">
+  <div style="font-size:4.5rem;font-weight:800;color:#F97316;line-height:1;">429</div>
+  <h1 style="margin:1rem 0 .5rem;">Too many requests</h1>
+  <p style="color:#666;max-width:32rem;margin:0 auto 1.5rem;">
+    {% if rtl %}زۆر داواکاریت ناردووە. تکایە کەمێک چاوەڕوان بکە و دووبارە هەوڵ بدەرەوە.{% elif lang == 'ar' %}أرسلت الكثير من الطلبات. يرجى الانتظار قليلًا ثم المحاولة مجددًا.{% else %}You've sent too many requests. Please wait a moment and try again.{% endif %}
+  </p>
+  <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('home') }}</a>
+</section>
+{% endblock %}

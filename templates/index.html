@@ -115,7 +115,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/hero3d.js') }}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 // gentle parallax on scroll for 3D art
 (function(){
   var arts = document.querySelectorAll('.m-art img, .hero-3d img');

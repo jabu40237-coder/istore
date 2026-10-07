@@ -93,7 +93,7 @@
   <div class="empty"><div class="ico">🔍</div><p>{% if favorites_page %}{{ t('no_favorites') }}{% else %}{{ t('no_orders') }}{% endif %}</p></div>
   {% endif %}
 </section>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 // platform filter: tap icon -> set hidden field -> submit (no page reload for active state)
 document.querySelectorAll('#platScroll .plat-item').forEach(function(btn){
   btn.addEventListener('click', function(){

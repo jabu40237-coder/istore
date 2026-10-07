@@ -124,7 +124,7 @@
     </button>
   </form>
 </div>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   // platform tap -> filter
   document.querySelectorAll('#platScroll .plat-item').forEach(function(btn){
