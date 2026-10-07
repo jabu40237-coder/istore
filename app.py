@@ -32,14 +32,17 @@ def create_app():
 
     # ---------- reverse-proxy trust ----------
     # Apply ProxyFix ONLY when TRUST_PROXY=1, i.e. exactly one trusted
-    # reverse proxy (Koyeb / Cloudflare) sits in front of the app and sets
-    # X-Forwarded-For / X-Forwarded-Proto. x_for=1, x_proto=1 trusts exactly
-    # one hop. Over-trusting (or trusting without a real proxy) lets
-    # clients spoof their IP (rate-limit / audit evasion) and can cause
-    # http<->https redirect loops. Default: off (direct deploys).
+    # reverse proxy (Koyeb / Cloudflare / Codespaces tunnel) sits in front
+    # of the app and sets X-Forwarded-For / X-Forwarded-Proto /
+    # X-Forwarded-Host. x_for=1, x_proto=1, x_host=1 trusts exactly one hop.
+    # Over-trusting (or trusting without a real proxy) lets clients spoof
+    # their IP (rate-limit / audit evasion) and can cause http<->https
+    # redirect loops. Default: off (direct deploys).
+    # x_host=1 is required so Flask builds redirect URLs (e.g. /admin ->
+    # /admin/) with the real public host instead of localhost:5050.
     if os.environ.get("TRUST_PROXY") == "1":
         from werkzeug.middleware.proxy_fix import ProxyFix
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     # ---------- security headers (Flask-Talisman) ----------
     _cdn = ["https://cdn.tailwindcss.com", "https://cdnjs.cloudflare.com"]

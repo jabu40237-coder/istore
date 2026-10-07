@@ -15,8 +15,12 @@ auth_svc.ensure_roles()
 db = get_session()
 ensure_default_rules(db)
 
-# 1) sync services from mock provider
+# 1) sync services from mock provider (ensure the mock provider row exists first)
 prov = db.query(Provider).filter_by(code="mock").first()
+if not prov:
+    prov = Provider(code="mock", name="Mock (dev)")
+    db.add(prov)
+    db.commit()
 stats = sync_provider(MockProvider(), prov)
 n = db.query(Service).filter_by(status="active").count()
 print("SYNC:", stats, "| active services:", n)
@@ -34,9 +38,10 @@ print("BALANCE after deposit:", bal)
 assert bal == Decimal("50")
 db2.close()
 
-# 3) place order
+# 3) place order (use a service from the mock provider, not whatever is first in the db)
 db3 = get_session()
-svc = db3.query(Service).filter_by(status="active").first()
+svc = db3.query(Service).filter_by(status="active", provider_id=prov.id).first()
+assert svc, "no active mock-provider service found"
 svc_id, smin = svc.id, svc.min_quantity
 db3.close()
 res = order_svc.create_order(uid, svc_id, "https://instagram.com/p/test123",
