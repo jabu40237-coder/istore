@@ -470,6 +470,48 @@ def totp_disable():
     return redirect(url_for("admin.security"))
 
 
+@bp.route("/payments", methods=["GET", "POST"])
+@auth_svc.super_admin_required
+def payments():
+    """Payment provider configuration. Credentials are encrypted at rest.
+    Nothing is active until a provider is selected AND its credentials saved."""
+    from services import payments as pay
+    db = get_session()
+    try:
+        if request.method == "POST":
+            code = request.form.get("provider", "none")
+            if code not in ("none", "zaincash", "fastpay"):
+                code = "none"
+            pay.write_setting(db, "payment_provider", code)
+            pay.write_setting(db, "payment_test_mode",
+                              "0" if request.form.get("test_mode") != "1" else "1")
+            fields = {
+                "zaincash": ["client_id", "client_secret", "api_key", "prod_host"],
+                "fastpay": ["store_id", "store_password", "refund_secret",
+                            "stage_host", "prod_host"],
+            }
+            for f in fields.get(code, []):
+                v = (request.form.get(f"payment_{code}_{f}") or "").strip()
+                if v:  # only overwrite when provided (never echo back)
+                    pay.write_setting(db, f"payment_{code}_{f}", v, secret=True)
+            db.commit()
+            _audit("payment_settings", f"provider:{code}", {})
+            return redirect(url_for("admin.payments"))
+        vals = {"provider": pay.read_setting(db, "payment_provider") or "none",
+                "test_mode": pay.read_setting(db, "payment_test_mode") or "1"}
+        configured = {}
+        for code in ("zaincash", "fastpay"):
+            p = pay.get_provider(code)
+            configured[code] = bool(p and p.is_configured())
+        from models import PaymentInvoice
+        invoices = db.query(PaymentInvoice).order_by(
+            PaymentInvoice.created_at.desc()).limit(20).all()
+        return render_template("admin/payments.html", vals=vals,
+                               configured=configured, invoices=invoices)
+    finally:
+        db.close()
+
+
 @bp.route("/pricing", methods=["GET", "POST"])
 @auth_svc.super_admin_required
 def pricing():

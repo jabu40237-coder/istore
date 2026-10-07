@@ -1,0 +1,74 @@
+{% extends "admin/base_admin.html" %}
+{% block dash %}
+<div class="page-head" style="padding:0 0 1rem;"><h1>{{ t('payments_title') }}</h1></div>
+
+<div class="card" style="margin-bottom:1.2rem;">
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <div class="field" style="max-width:320px;">
+      <label class="lbl">{{ t('payment_provider') }}</label>
+      <select class="select" name="provider" id="payProvider">
+        <option value="none" {% if vals.provider=='none' %}selected{% endif %}>{{ t('disabled') }}</option>
+        <option value="zaincash" {% if vals.provider=='zaincash' %}selected{% endif %}>ZainCash {% if configured.zaincash %}✓{% endif %}</option>
+        <option value="fastpay" {% if vals.provider=='fastpay' %}selected{% endif %}>FastPay {% if configured.fastpay %}✓{% endif %}</option>
+      </select>
+    </div>
+    <div class="field" style="max-width:320px;">
+      <label class="lbl" style="display:flex; align-items:center; gap:.5rem;">
+        <input type="checkbox" name="test_mode" value="1" {% if vals.test_mode=='1' %}checked{% endif %} style="accent-color:#F97316;">
+        {{ t('test_mode') }}
+      </label>
+    </div>
+
+    <div id="pay-zaincash" style="display:none; border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
+      <h3 style="margin-bottom:.8rem;">ZainCash</h3>
+      {% for f in ['client_id','client_secret','api_key','prod_host'] %}
+      <div class="field" style="max-width:420px;">
+        <label class="lbl">{{ f }}</label>
+        <input class="input" type="text" name="payment_zaincash_{{ f }}" dir="ltr"
+               placeholder="{% if f=='prod_host' %}https://…{% else %}••••••••{% endif %}">
+      </div>
+      {% endfor %}
+      <p style="font-size:.8rem; color:var(--text-muted);">{{ t('secrets_note') }}</p>
+    </div>
+
+    <div id="pay-fastpay" style="display:none; border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
+      <h3 style="margin-bottom:.8rem;">FastPay</h3>
+      {% for f in ['store_id','store_password','refund_secret','stage_host','prod_host'] %}
+      <div class="field" style="max-width:420px;">
+        <label class="lbl">{{ f }}</label>
+        <input class="input" type="text" name="payment_fastpay_{{ f }}" dir="ltr" placeholder="••••••••">
+      </div>
+      {% endfor %}
+      <p style="font-size:.8rem; color:var(--text-muted);">{{ t('secrets_note') }}</p>
+    </div>
+
+    <button class="btn btn-primary" type="submit" style="margin-top:1rem;">{{ t('save') }}</button>
+  </form>
+</div>
+
+{% if invoices %}
+<div class="card">
+  <h3 style="margin-bottom:1rem;">{{ t('recent_invoices') }}</h3>
+  <div class="table-wrap"><table class="tbl">
+    <tr><th>#</th><th>{{ t('user') }}</th><th>{{ t('payment_provider') }}</th><th>{{ t('charge') }}</th><th>{{ t('status') }}</th><th>{{ t('date') }}</th></tr>
+    {% for i in invoices %}
+    <tr><td>{{ i.id }}</td><td>{{ i.user_id }}</td><td>{{ i.provider }}</td>
+        <td>{{ "{:,.0f}".format(i.amount) }} {{ i.currency }}</td>
+        <td><span class="status-pill st-{{ i.status|upper }}">{{ i.status }}</span></td>
+        <td>{{ i.created_at }}</td></tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endif %}
+<script>
+(function(){
+  var sel = document.getElementById('payProvider');
+  function show(){
+    document.getElementById('pay-zaincash').style.display = sel.value==='zaincash' ? 'block' : 'none';
+    document.getElementById('pay-fastpay').style.display = sel.value==='fastpay' ? 'block' : 'none';
+  }
+  sel.addEventListener('change', show); show();
+})();
+</script>
+{% endblock %}

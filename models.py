@@ -344,3 +344,18 @@ class TotpBackupCode(Base):
     code_hash = Column(String(128), nullable=False)
     used_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=now)
+
+
+class PaymentInvoice(Base):
+    """Top-up invoice created via a payment provider (never fake)."""
+    __tablename__ = "payment_invoices"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    provider = Column(String(32), nullable=False)
+    provider_ref = Column(String(128), unique=True, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(8), default="IQD")
+    status = Column(String(32), default="pending")  # pending|paid|failed|expired
+    raw = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=now, index=True)
+    paid_at = Column(DateTime, nullable=True)

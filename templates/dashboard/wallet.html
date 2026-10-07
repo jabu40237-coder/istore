@@ -6,9 +6,22 @@
   <div class="card stat-card"><div class="num">{{ fmt_price(balance, 'IQD') }}</div><div class="lbl2">IQD</div></div>
   {% endif %}
 </div>
-<div class="card" style="margin-bottom:1.2rem; border-style:dashed;">
+<div class="card" style="margin-bottom:1.2rem; {% if not pay_provider %}border-style:dashed;{% endif %}">
+  {% if pay_provider %}
+  <h3 style="margin-bottom:.4rem;">{{ t('top_up_via', name=pay_provider.display_name) }}</h3>
+  <p style="color:var(--text-muted); font-size:.92rem; margin-bottom:1rem;">{{ t('top_up_desc') }}</p>
+  <form method="post" action="{{ url_for('user.wallet_topup') }}" style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:end;">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
+    <div class="field" style="margin:0; min-width:180px;">
+      <label class="lbl">{{ t('amount_iqd') }}</label>
+      <input class="input" type="number" name="amount_iqd" min="5000" step="1000" value="10000" required dir="ltr">
+    </div>
+    <button class="btn btn-primary" type="submit">{{ t('pay_now') }}</button>
+  </form>
+  {% else %}
   <h3 style="margin-bottom:.4rem;">{{ t('payment_coming_soon') }}</h3>
   <p style="color:var(--text-muted); font-size:.92rem;">{{ t('payment_coming_soon_desc') }}</p>
+  {% endif %}
 </div>
 <div class="card">
   <h3 style="margin-bottom:1rem;">{{ t('transactions') }}</h3>
