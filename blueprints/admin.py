@@ -66,7 +66,7 @@ def _audit(action, target="", meta=None):
         db.close()
 
 
-@bp.route("/")
+@bp.route("/", strict_slashes=False)
 @auth_svc.super_admin_required
 def dashboard():
     db = get_session()

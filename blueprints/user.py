@@ -37,7 +37,7 @@ def _provider():
         db.close()
 
 
-@bp.route("/")
+@bp.route("/", strict_slashes=False)
 @auth_svc.login_required
 def dashboard():
     db = get_session()
