@@ -22,6 +22,14 @@ def set_api_base(url: str):
     """Override the Telegram API base (e.g. vault surrogate URL)."""
     global API
     API = url.rstrip("/")
+
+
+def _api_configured() -> bool:
+    """True when the API base carries a usable token/surrogate.
+    Checks the resolved base (not just the env var) so vault-surrogate
+    mode works."""
+    base = (API or "").rstrip("/")
+    return bool(base) and not base.endswith("/bot")
 STR = {
     "ku": {"welcome": "بخێر بهێن بۆ ئایستۆر 🏪\n/order — داواکاریا نوو\n/orders — داواکاریێن من\n/balance — باڵانس\n/services — خزمەتگوزاری\n/support — پشتیڤانی\n/language — زمان\n/help — هاریکاری",
            "balance": "باڵانسا تە: ${b}",
@@ -57,7 +65,7 @@ SITE_URL = ""  # optional: set SITE_URL env to advertise the web URL in bot hint
 
 def notify_telegram(tg_id: str, text: str) -> bool:
     """Send a notification to a linked Telegram user. Returns success."""
-    if not Config.TELEGRAM_BOT_TOKEN or not tg_id:
+    if not _api_configured() or not tg_id:
         return False
     try:
         r = httpx.post(f"{API}/sendMessage",
@@ -104,9 +112,12 @@ def send(chat_id, text):
 
 
 def find_user(tg_id):
+    from sqlalchemy.orm import joinedload
     db = get_session()
     try:
-        return db.query(User).filter_by(telegram_id=str(tg_id)).first()
+        # joinedload: handle() reads user.roles after the session closes
+        return db.query(User).options(joinedload(User.roles)).filter_by(
+            telegram_id=str(tg_id)).first()
     finally:
         db.close()
 
@@ -214,24 +225,42 @@ def handle(msg):
 
 
 def main():
-    if not Config.TELEGRAM_BOT_TOKEN:
+    if not _api_configured():
         print("TELEGRAM_BOT_TOKEN not set — bot disabled")
         return
     init_db()
     print("[bot] polling...", flush=True)
     offset = 0
+    failures = 0
     while True:
         try:
             r = httpx.post(f"{API}/getUpdates",
                            json={"offset": offset, "timeout": 25}, timeout=40)
             data = r.json()
+            if not data.get("ok"):
+                # 409 = another instance polling or webhook set: exit loudly
+                if data.get("error_code") == 409:
+                    print("[bot] 409 conflict: another instance is polling or a "
+                          "webhook is set. Run deleteWebhook and keep a single "
+                          "instance.", flush=True)
+                    raise SystemExit(1)
+                failures += 1
+                wait = min(60, 2 ** failures)
+                print(f"[bot] getUpdates not ok, backing off {wait}s", flush=True)
+                time.sleep(wait)
+                continue
+            failures = 0
             for upd in data.get("result", []):
                 offset = upd["update_id"] + 1
                 if "message" in upd:
                     handle(upd["message"])
+        except SystemExit:
+            raise
         except Exception as e:
-            print("[bot] poll error:", str(e)[:120])
-            time.sleep(5)
+            failures += 1
+            wait = min(60, 2 ** failures)
+            print("[bot] poll error:", str(e)[:120], f"— retry in {wait}s")
+            time.sleep(wait)
 
 
 if __name__ == "__main__":
