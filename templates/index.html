@@ -1,15 +1,21 @@
 {% extends "base.html" %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+{% endblock %}
 {% block content %}
-<section class="hero">
-  <span class="hero-badge">{{ t('app_name') }} · {{ t('app_name_latin') }}</span>
-  <h1>{{ t('tagline') }}</h1>
-  <p class="sub">{{ t('subheading') }}</p>
-  <div class="hero-cta">
-    <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
-    <a class="btn btn-outline" href="{{ url_for('services') }}">{{ t('explore_services') }}</a>
+<section class="hero hero-live">
+  <canvas id="hero3d-live"></canvas>
+  <div class="hero-content">
+    <span class="hero-badge">{{ t('app_name') }} · {{ t('app_name_latin') }}</span>
+    <h1>{{ t('tagline') }}</h1>
+    <p class="sub">{{ t('subheading') }}</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
+      <a class="btn btn-outline" href="{{ url_for('services') }}">{{ t('explore_services') }}</a>
+    </div>
   </div>
-  <div class="hero-3d">
-    <img src="/3d-assets/hero-store.png" alt="i Store" class="art" onerror="this.outerHTML='<div class=\'art\'>🏪</div>'">
+  <div class="hero-3d float-slow">
+    <img src="{{ url_for('static', filename='3d-assets/hero-store.png') }}" alt="i Store 3D">
   </div>
 </section>
 
@@ -56,17 +62,17 @@
   <p class="lead">{{ t('subheading') }}</p>
   <div class="feat-grid">
     <div class="feat-card">
-      <div class="f-ico">🚀</div>
+      <div class="f-ico"><img src="{{ url_for('static', filename='3d-assets/icon-fast.png') }}" alt="" class="float"></div>
       <h3>{{ t('feat_fast') }}</h3>
       <p>{{ t('feat_fast_desc') }}</p>
     </div>
     <div class="feat-card">
-      <div class="f-ico">💰</div>
+      <div class="f-ico"><img src="{{ url_for('static', filename='3d-assets/icon-price.png') }}" alt="" class="float" style="animation-delay:.4s"></div>
       <h3>{{ t('feat_price') }}</h3>
       <p>{{ t('feat_price_desc') }}</p>
     </div>
     <div class="feat-card">
-      <div class="f-ico">🛡️</div>
+      <div class="f-ico"><img src="{{ url_for('static', filename='3d-assets/icon-safe.png') }}" alt="" class="float" style="animation-delay:.8s"></div>
       <h3>{{ t('feat_safe') }}</h3>
       <p>{{ t('feat_safe_desc') }}</p>
     </div>
@@ -75,8 +81,8 @@
 
 <section class="section" style="padding-top:0;">
   <div class="marketing">
-    <div class="m-art">
-      <img src="/3d-assets/money-bag.png" alt="" onerror="this.outerHTML='💰'">
+    <div class="m-art float-slow">
+      <img src="{{ url_for('static', filename='3d-assets/money-bag.png') }}" alt="">
     </div>
     <div>
       <h3>{{ t('m_save_title') }}</h3>
@@ -93,8 +99,8 @@
       <p>{{ t('m_try_desc') }}</p>
       <a class="btn btn-outline" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
     </div>
-    <div class="m-art">
-      <img src="/3d-assets/person-laptop.png" alt="" onerror="this.outerHTML='💻'">
+    <div class="m-art float-slow" style="animation-delay:.6s">
+      <img src="{{ url_for('static', filename='3d-assets/person-laptop.png') }}" alt="">
     </div>
   </div>
 </section>
@@ -106,4 +112,27 @@
     <a class="btn" style="background:#fff; color:var(--primary-dark);" href="{{ url_for('register') }}">{{ t('start_now') }}</a>
   </div>
 </section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/hero3d.js') }}"></script>
+<script>
+// gentle parallax on scroll for 3D art
+(function(){
+  var arts = document.querySelectorAll('.m-art img, .hero-3d img');
+  if(!arts.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var ticking = false;
+  window.addEventListener('scroll', function(){
+    if(ticking) return; ticking = true;
+    requestAnimationFrame(function(){
+      var y = window.scrollY;
+      arts.forEach(function(el, i){
+        var r = el.getBoundingClientRect();
+        var off = (r.top + r.height/2 - window.innerHeight/2) / window.innerHeight;
+        el.style.transform = 'translateY(' + (off * (20 + i*8)) + 'px)';
+      });
+      ticking = false;
+    });
+  }, {passive:true});
+})();
+</script>
 {% endblock %}
