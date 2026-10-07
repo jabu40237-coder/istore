@@ -43,20 +43,33 @@
       <p style="font-size:.8rem; color:var(--text-muted);">{{ t('secrets_note') }}</p>
     </div>
 
+    <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+      <div class="field" style="max-width:200px; margin:0;">
+        <label class="lbl">Top-up min (IQD)</label>
+        <input class="input" type="number" name="payment_topup_min_iqd" min="1000" step="1000"
+               value="{{ vals.payment_topup_min_iqd }}" dir="ltr">
+      </div>
+      <div class="field" style="max-width:200px; margin:0;">
+        <label class="lbl">Top-up max (IQD)</label>
+        <input class="input" type="number" name="payment_topup_max_iqd" min="5000" step="1000"
+               value="{{ vals.payment_topup_max_iqd }}" dir="ltr">
+      </div>
+    </div>
+
     <button class="btn btn-primary" type="submit" style="margin-top:1rem;">{{ t('save') }}</button>
   </form>
 </div>
 
-{% if invoices %}
+{% if topups %}
 <div class="card">
-  <h3 style="margin-bottom:1rem;">{{ t('recent_invoices') }}</h3>
+  <h3 style="margin-bottom:1rem;">{{ t('topup_history') }}</h3>
   <div class="table-wrap"><table class="tbl">
-    <tr><th>#</th><th>{{ t('user') }}</th><th>{{ t('payment_provider') }}</th><th>{{ t('charge') }}</th><th>{{ t('status') }}</th><th>{{ t('date') }}</th></tr>
-    {% for i in invoices %}
-    <tr><td>{{ i.id }}</td><td>{{ i.user_id }}</td><td>{{ i.provider }}</td>
-        <td>{{ "{:,.0f}".format(i.amount) }} {{ i.currency }}</td>
-        <td><span class="status-pill st-{{ i.status|upper }}">{{ i.status }}</span></td>
-        <td>{{ i.created_at }}</td></tr>
+    <tr><th>#</th><th>{{ t('user') }}</th><th>Ref</th><th>{{ t('charge') }}</th><th>{{ t('status') }}</th><th>{{ t('date') }}</th></tr>
+    {% for x in topups %}
+    <tr><td>{{ x.id }}</td><td>{{ x.user_id }}</td><td style="max-width:220px; overflow:hidden; text-overflow:ellipsis;" dir="ltr">{{ x.provider_ref }}</td>
+        <td>{{ "{:,}".format(x.amount_iqd) }} IQD</td>
+        <td><span class="status-pill st-{{ x.status }}">{{ x.status }}</span></td>
+        <td>{{ x.created_at.strftime('%Y-%m-%d %H:%M') if x.created_at }}</td></tr>
     {% endfor %}
   </table></div>
 </div>

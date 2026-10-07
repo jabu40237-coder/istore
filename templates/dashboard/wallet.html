@@ -1,5 +1,10 @@
 {% extends "dashboard/base_dash.html" %}
 {% block dash %}
+{% if topup_status %}
+<div class="card" style="margin-bottom:1.2rem; border-{{ 'solid' }}; {{ 'border-color:#00d68f;' if topup_status == 'success' else 'border-color:#ffb020;' if topup_status == 'pending' else 'border-color:#ff5c5c;' }}">
+  <p style="margin:0; font-weight:600;">{{ t('topup_' ~ topup_status) if topup_status in ['success','failed','pending','canceled','invalid_amount','provider_error'] else topup_status }}</p>
+</div>
+{% endif %}
 <div class="grid grid-4" style="margin-bottom:1.2rem;">
   <div class="card stat-card"><div class="num">{{ fmt_price(balance, 'USD') }}</div><div class="lbl2">{{ t('current_balance') }}</div></div>
   {% if currency == 'IQD' %}
@@ -8,21 +13,37 @@
 </div>
 <div class="card" style="margin-bottom:1.2rem; {% if not pay_provider %}border-style:dashed;{% endif %}">
   {% if pay_provider %}
-  <h3 style="margin-bottom:.4rem;">{{ t('top_up_via', name=pay_provider.display_name) }}</h3>
-  <p style="color:var(--text-muted); font-size:.92rem; margin-bottom:1rem;">{{ t('top_up_desc') }}</p>
-  <form method="post" action="{{ url_for('user.wallet_topup') }}" style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:end;">
+  <h3 style="margin-bottom:.4rem;">{{ t('topup_with', name=pay_provider.display_name) }}</h3>
+  <p style="color:var(--text-muted); font-size:.92rem; margin-bottom:1rem;">{{ t('topup_min_max', lo=topup_lo, hi=topup_hi) }}</p>
+  <form method="post" action="{{ url_for('topup.wallet_topup') }}" style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:end;">
     <input type="hidden" name="csrf" value="{{ session.get('csrf','') }}">
     <div class="field" style="margin:0; min-width:180px;">
-      <label class="lbl">{{ t('amount_iqd') }}</label>
-      <input class="input" type="number" name="amount_iqd" min="5000" step="1000" value="10000" required dir="ltr">
+      <label class="lbl">{{ t('topup_amount_iqd') }}</label>
+      <input class="input" type="number" name="amount_iqd" min="{{ topup_lo }}" max="{{ topup_hi }}" step="1000" value="10000" required dir="ltr">
     </div>
     <button class="btn btn-primary" type="submit">{{ t('pay_now') }}</button>
   </form>
   {% else %}
-  <h3 style="margin-bottom:.4rem;">{{ t('payment_coming_soon') }}</h3>
+  <h3 style="margin-bottom:.4rem;">{{ t('topup_coming_soon') }}</h3>
   <p style="color:var(--text-muted); font-size:.92rem;">{{ t('payment_coming_soon_desc') }}</p>
   {% endif %}
 </div>
+{% if topups %}
+<div class="card" style="margin-bottom:1.2rem;">
+  <h3 style="margin-bottom:1rem;">{{ t('topup_history') }}</h3>
+  <div class="table-wrap"><table class="tbl">
+    <tr><th>#</th><th>{{ t('topup_amount_iqd') }}</th><th>{{ t('status') }}</th><th>{{ t('date') }}</th></tr>
+    {% for x in topups %}
+    <tr>
+      <td>{{ x.id }}</td>
+      <td dir="ltr">{{ "{:,}".format(x.amount_iqd) }} IQD</td>
+      <td>{{ x.status }}</td>
+      <td>{{ x.created_at.strftime('%Y-%m-%d %H:%M') if x.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endif %}
 <div class="card">
   <h3 style="margin-bottom:1rem;">{{ t('transactions') }}</h3>
   {% if txs %}

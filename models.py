@@ -359,3 +359,40 @@ class PaymentInvoice(Base):
     raw = Column(JSON, default=dict)
     created_at = Column(DateTime, default=now, index=True)
     paid_at = Column(DateTime, nullable=True)
+
+
+class TopUp(Base):
+    """Real-money wallet top-up via a payment provider (ZainCash).
+
+    Money safety rules:
+    - provider_ref is the ZainCash externalReferenceId (UNIQUE): one row
+      per provider transaction, forever.
+    - idempotency_key (UNIQUE): one credit attempt per row.
+    - status only moves PENDING -> COMPLETED | FAILED | CANCELED, and the
+      wallet is credited exactly once, inside the same DB transaction that
+      flips the status (SELECT ... FOR UPDATE).
+    - exchange_rate is the admin USD_TO_IQD rate frozen at top-up time.
+    """
+    __tablename__ = "topups"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    provider = Column(String(32), default="zaincash", nullable=False)
+    provider_ref = Column(String(128), unique=True, nullable=False, index=True)
+    idempotency_key = Column(String(64), unique=True, nullable=False, index=True)
+    amount_iqd = Column(Integer, nullable=False)
+    amount_usd = Column(MONEY, default=Decimal("0"))  # credited amount
+    exchange_rate = Column(MONEY, default=Decimal("1500"))  # USD_TO_IQD at top-up time
+    status = Column(String(16), default="PENDING", index=True)  # PENDING|COMPLETED|FAILED|CANCELED
+    raw_response = Column(JSON, default=dict, nullable=True)
+    created_at = Column(DateTime, default=now, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+
+class WebhookEvent(Base):
+    """Processed provider webhook event IDs (idempotency for double delivery)."""
+    __tablename__ = "webhook_events"
+    id = Column(Integer, primary_key=True)
+    provider = Column(String(32), nullable=False, index=True)
+    event_id = Column(String(128), nullable=False)
+    received_at = Column(DateTime, default=now)
+    __table_args__ = (UniqueConstraint("provider", "event_id"),)

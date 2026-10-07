@@ -492,20 +492,26 @@ def payments():
                 v = (request.form.get(f"payment_{code}_{f}") or "").strip()
                 if v:  # only overwrite when provided (never echo back)
                     pay.write_setting(db, f"payment_{code}_{f}", v, secret=True)
+            for k in ("payment_topup_min_iqd", "payment_topup_max_iqd"):
+                v = (request.form.get(k) or "").strip()
+                if v.isdigit():
+                    pay.write_setting(db, k, v)
             db.commit()
             _audit("payment_settings", f"provider:{code}", {})
             return redirect(url_for("admin.payments"))
         vals = {"provider": pay.read_setting(db, "payment_provider") or "none",
-                "test_mode": pay.read_setting(db, "payment_test_mode") or "1"}
+                "test_mode": pay.read_setting(db, "payment_test_mode") or "1",
+                "payment_topup_min_iqd": pay.read_setting(db, "payment_topup_min_iqd") or "5000",
+                "payment_topup_max_iqd": pay.read_setting(db, "payment_topup_max_iqd") or "1000000"}
         configured = {}
         for code in ("zaincash", "fastpay"):
             p = pay.get_provider(code)
             configured[code] = bool(p and p.is_configured())
-        from models import PaymentInvoice
-        invoices = db.query(PaymentInvoice).order_by(
-            PaymentInvoice.created_at.desc()).limit(20).all()
+        from models import TopUp
+        topups = db.query(TopUp).order_by(
+            TopUp.created_at.desc()).limit(20).all()
         return render_template("admin/payments.html", vals=vals,
-                               configured=configured, invoices=invoices)
+                               configured=configured, topups=topups)
     finally:
         db.close()
 

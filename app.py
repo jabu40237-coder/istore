@@ -126,7 +126,7 @@ def create_app():
         # and provider server-to-server webhooks, which authenticate via
         # signed payloads instead of session cookies)
         if request.method == "POST" and request.endpoint not in (
-                "login", "register", "health", "pay_webhook"):
+                "login", "register", "health", "topup.zaincash_webhook"):
             token = request.form.get("csrf", "")
             if not token or token != session.get("csrf"):
                 abort(400)
@@ -367,46 +367,6 @@ def create_app():
             session["currency"] = cur
         return redirect(request.referrer or url_for("index"))
 
-    @app.route("/pay/webhook/<provider>", methods=["POST"])
-    def pay_webhook(provider):
-        """Server-to-server payment webhook. Verifies signature via the
-        provider, credits the wallet idempotently. Always returns 200
-        (after logging) so providers don't retry-storm on logic errors —
-        verification failures are recorded on the invoice, not as HTTP 500."""
-        from services import payments as pay
-        from models import PaymentInvoice
-        p = pay.get_provider(provider, test_mode=True)
-        db = get_session()
-        try:
-            t = db.query(SystemSetting).filter_by(key="payment_test_mode").first()
-            test_mode = (t.value if t and t.value else "1") != "0"
-            p = pay.get_provider(provider, test_mode=test_mode)
-            if not p or not p.is_configured():
-                return jsonify({"ok": False, "error": "unknown_provider"}), 404
-            payload = request.get_json(silent=True) or dict(request.form)
-            result = p.verify_callback(payload, dict(request.headers))
-            ref = result.get("provider_ref") or ""
-            inv = None
-            if ref:
-                inv = db.query(PaymentInvoice).filter_by(
-                    provider_ref=ref).with_for_update().first()
-            if inv and result.get("ok") and inv.status == "pending":
-                # reuse the user blueprint's credit helper
-                from blueprints.user import _credit_topup, _wallet_rate  # noqa
-                _credit_topup(db, inv, p, result)
-            elif inv and not result.get("ok"):
-                inv.status = "failed"
-                inv.raw = dict(inv.raw or {}, verify=result.get("raw") or {},
-                               verify_error=result.get("error"))
-                db.commit()
-            return jsonify({"ok": True})
-        except Exception as e:
-            db.rollback()
-            app.logger.exception("pay_webhook failed")
-            return jsonify({"ok": False}), 200
-        finally:
-            db.close()
-
     for page in ["about", "faq", "contact", "terms", "privacy"]:
         def _mk(p):
             def _view():
@@ -551,9 +511,11 @@ def create_app():
     from blueprints.user import bp as user_bp
     from blueprints.admin import bp as admin_bp
     from blueprints.api import bp as api_bp
+    from blueprints.topup import bp as topup_bp
     app.register_blueprint(user_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(topup_bp)
 
     # Order-creation guard: 20/min on POST. Applied here (wrapping the
     # registered view — Flask resolves view_functions at dispatch time)

@@ -32,12 +32,22 @@ class PaymentProvider(ABC):
     @abstractmethod
     def create_invoice(self, *, user_id: int, amount: float, currency: str,
                        description: str, return_url: str,
-                       webhook_url: str) -> InvoiceResult:
+                       webhook_url: str, reference: str = "",
+                       order_id: str = "", language: str = "en",
+                       cancel_url: str = "") -> InvoiceResult:
         ...
 
     @abstractmethod
     def verify_callback(self, payload: dict, headers: dict) -> VerifyResult:
         ...
+
+    def inquiry(self, transaction_id: str) -> dict:
+        """Authoritative server-side status check. {} = unknown/not paid."""
+        return {}
+
+    def reverse(self, transaction_id: str, amount=None) -> dict:
+        """Refund (admin use). Not supported by default."""
+        return {"ok": False, "error": "not_supported"}
 
     def is_configured(self) -> bool:
         return all(self.settings.get(k) for k in self.required_settings)

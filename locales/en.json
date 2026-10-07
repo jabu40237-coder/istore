@@ -293,5 +293,18 @@
   "top_up_desc": "Enter the amount in IQD — you will be redirected to the payment page.",
   "amount_iqd": "Amount (IQD)",
   "pay_now": "Pay now",
-  "user": "User"
+  "user": "User",
+  "top_up_title": "Top Up Balance",
+  "topup_amount_iqd": "Amount (IQD)",
+  "topup_min_max": "Min {lo} and max {hi} IQD",
+  "topup_redirecting": "Redirecting you to the payment page...",
+  "topup_success": "Your balance was topped up successfully!",
+  "topup_failed": "Payment failed. Please try again.",
+  "topup_pending": "Payment is being verified — we'll confirm it soon.",
+  "topup_coming_soon": "Payment System Coming Soon",
+  "topup_canceled": "Payment was canceled.",
+  "topup_invalid_amount": "Invalid amount.",
+  "topup_provider_error": "Payment provider issue — please try again.",
+  "topup_with": "Top up with {name}",
+  "topup_history": "Top-up History"
 }

@@ -293,5 +293,18 @@
   "top_up_desc": "أدخل المبلغ بالدينار العراقي — سيتم تحويلك لصفحة الدفع.",
   "amount_iqd": "المبلغ (دينار)",
   "pay_now": "ادفع الآن",
-  "user": "المستخدم"
+  "user": "المستخدم",
+  "top_up_title": "شحن الرصيد",
+  "topup_amount_iqd": "المبلغ (دينار)",
+  "topup_min_max": "الحد الأدنى {lo} والحد الأقصى {hi} دينار",
+  "topup_redirecting": "جارٍ تحويلك إلى صفحة الدفع...",
+  "topup_success": "تم شحن رصيدك بنجاح!",
+  "topup_failed": "فشل الدفع. حاول مرة أخرى.",
+  "topup_pending": "الدفع قيد المراجعة — سنؤكده قريباً.",
+  "topup_coming_soon": "نظام الدفع قريباً",
+  "topup_canceled": "تم إلغاء الدفع.",
+  "topup_invalid_amount": "المبلغ غير صالح.",
+  "topup_provider_error": "مشكلة لدى مزود الدفع — حاول مرة أخرى.",
+  "topup_with": "اشحن عبر {name}",
+  "topup_history": "سجل شحن الرصيد"
 }

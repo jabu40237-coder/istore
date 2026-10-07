@@ -217,108 +217,23 @@ def cancel(oid):
 def wallet():
     db = get_session()
     try:
-        from models import Wallet
+        from models import Wallet, TopUp
         w = db.query(Wallet).filter_by(user_id=g.user.id).first()
         txs = db.query(Transaction).filter_by(wallet_id=w.id).order_by(
             Transaction.created_at.desc()).limit(50).all() if w else []
         from services import payments as pay
         provider = pay.get_active_provider()
+        topups = db.query(TopUp).filter_by(user_id=g.user.id).order_by(
+            TopUp.created_at.desc()).limit(10).all()
+        from blueprints.topup import topup_bounds
+        lo, hi = topup_bounds()
         return render_template("dashboard/wallet.html",
                                balance=w.balance_usd if w else Decimal("0"), txs=txs,
-                               pay_provider=provider)
+                               pay_provider=provider, topups=topups,
+                               topup_lo=lo, topup_hi=hi,
+                               topup_status=request.args.get("topup", ""))
     finally:
         db.close()
-
-
-@bp.route("/wallet/topup", methods=["POST"])
-@auth_svc.login_required
-def wallet_topup():
-    """Create a real provider invoice and redirect the user to pay.
-    Only reachable when Ali activated a configured provider."""
-    if request.form.get("csrf") != __import__("flask").session.get("csrf"):
-        abort(400)
-    from services import payments as pay
-    provider = pay.get_active_provider()
-    if not provider:
-        abort(404)
-    try:
-        amount_iqd = int(request.form.get("amount_iqd", 0))
-    except ValueError:
-        amount_iqd = 0
-    if amount_iqd < 5000:  # min 5,000 IQD
-        return redirect(url_for("user.wallet"))
-    from models import PaymentInvoice
-    res = provider.create_invoice(
-        user_id=g.user.id, amount=amount_iqd, currency="IQD",
-        description=f"i Store wallet top-up",
-        return_url=url_for("user.wallet_topup_return", _external=True),
-        webhook_url=url_for("pay_webhook",
-                            provider=provider.code, _external=True))
-    db = get_session()
-    try:
-        inv = PaymentInvoice(user_id=g.user.id, provider=provider.code,
-                             provider_ref=res.get("provider_ref", ""),
-                             amount=Decimal(amount_iqd), currency="IQD",
-                             status="pending" if res.get("ok") else "failed",
-                             raw=res.get("raw") or {})
-        db.add(inv)
-        db.commit()
-    finally:
-        db.close()
-    if not res.get("ok") or not res.get("redirect_url"):
-        return redirect(url_for("user.wallet"))
-    return redirect(res["redirect_url"])
-
-
-@bp.route("/wallet/topup/return")
-@auth_svc.login_required
-def wallet_topup_return():
-    """Provider redirects here after payment. We ALWAYS re-verify server-side
-    before crediting — never trust the redirect alone."""
-    from services import payments as pay
-    from models import PaymentInvoice
-    provider = pay.get_active_provider()
-    if not provider:
-        abort(404)
-    result = provider.verify_callback(dict(request.args),
-                                      dict(request.headers))
-    if result.get("ok") and result.get("provider_ref"):
-        db = get_session()
-        try:
-            inv = db.query(PaymentInvoice).filter_by(
-                provider_ref=result["provider_ref"],
-                status="pending").with_for_update().first()
-            if inv:
-                _credit_topup(db, inv, provider, result)
-        finally:
-            db.close()
-    return redirect(url_for("user.wallet"))
-
-
-def _credit_topup(db, inv, provider, result):
-    """Credit wallet once (idempotent): only pending invoices are credited."""
-    from models import now as _now
-    amount_iqd = Decimal(str(result.get("amount") or inv.amount))
-    # convert IQD -> USD at admin rate
-    rate = _wallet_rate(db)
-    amount_usd = (amount_iqd / rate).quantize(Decimal("0.01")) if rate else Decimal("0")
-    wallet_svc.apply_transaction(
-        db, inv.user_id, "deposit", amount_usd,
-        reference=f"topup:{provider.code}:{inv.provider_ref}",
-        note=f"Wallet top-up via {provider.display_name}")
-    inv.status = "paid"
-    inv.paid_at = _now()
-    inv.raw = dict(inv.raw or {}, verify=result.get("raw") or {})
-    db.commit()
-
-
-def _wallet_rate(db):
-    from models import SystemSetting
-    s = db.query(SystemSetting).filter_by(key="usd_to_iqd").first()
-    try:
-        return Decimal(s.value) if s and s.value else Decimal("1500")
-    except Exception:
-        return Decimal("1500")
 
 
 @bp.route("/notifications")

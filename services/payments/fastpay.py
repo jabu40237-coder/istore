@@ -37,7 +37,9 @@ class FastPayProvider(PaymentProvider):
                 "store_password": self.settings["store_password"]}
 
     def create_invoice(self, *, user_id, amount, currency="IQD",
-                       description="", return_url="", webhook_url=""):
+                       description="", return_url="", webhook_url="",
+                       reference="", order_id="", language="en",
+                       cancel_url=""):
         if currency != "IQD":
             return InvoiceResult(ok=False, error="fastpay_iqd_only")
         try:
