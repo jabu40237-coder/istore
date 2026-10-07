@@ -289,7 +289,7 @@
   "test_mode": "Test mode",
   "secrets_note": "Secrets are encrypted and never displayed — enter only to change.",
   "recent_invoices": "Recent invoices",
-  "top_up_via": "Top up via %(name)s",
+  "top_up_via": "Top up via {name}",
   "top_up_desc": "Enter the amount in IQD — you will be redirected to the payment page.",
   "amount_iqd": "Amount (IQD)",
   "pay_now": "Pay now",
